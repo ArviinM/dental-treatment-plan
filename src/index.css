@@ -1,25 +1,170 @@
 @import "tailwindcss";
 
+/* 
+ * SIA Dental Brand Colors (from siadental.com.au):
+ * - Primary Teal: #2BBFB3 (main brand color)
+ * - Purple/Magenta: #A5338D (accent, used for patient names)
+ * - Dark Gray: #1F2937 (text)
+ * - Light Gray: #F9FAFB (backgrounds)
+ */
+
+/* Load Nunito font family locally */
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-ExtraLight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-ExtraLightItalic.ttf') format('truetype');
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-LightItalic.ttf') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-MediumItalic.ttf') format('truetype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-SemiBoldItalic.ttf') format('truetype');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-ExtraBoldItalic.ttf') format('truetype');
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/Nunito-BlackItalic.ttf') format('truetype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
 @theme {
+  --font-family-sans: 'Nunito', system-ui, -apple-system, sans-serif;
+  
+  /* SIA Dental Brand Colors */
+  --color-sia-teal: #2BBFB3;
+  --color-sia-purple: #A5338D;
+  --color-sia-dark: #1F2937;
+  --color-sia-light: #F9FAFB;
+  
   --color-background: oklch(100% 0 0);
   --color-foreground: oklch(14.9% 0.028 265.75);
   --color-card: oklch(100% 0 0);
   --color-card-foreground: oklch(14.9% 0.028 265.75);
   --color-popover: oklch(100% 0 0);
   --color-popover-foreground: oklch(14.9% 0.028 265.75);
-  --color-primary: oklch(55% 0.12 175);
+  --color-primary: oklch(70% 0.12 175); /* Teal */
   --color-primary-foreground: oklch(98.5% 0.002 247.84);
   --color-secondary: oklch(96.7% 0.003 264.54);
   --color-secondary-foreground: oklch(21% 0.034 264.66);
   --color-muted: oklch(96.7% 0.003 264.54);
   --color-muted-foreground: oklch(55.8% 0.013 257.09);
-  --color-accent: oklch(96.7% 0.003 264.54);
-  --color-accent-foreground: oklch(21% 0.034 264.66);
+  --color-accent: oklch(55% 0.2 330); /* Purple */
+  --color-accent-foreground: oklch(98.5% 0.002 247.84);
   --color-destructive: oklch(57.7% 0.245 27.33);
   --color-destructive-foreground: oklch(98.5% 0.002 247.84);
   --color-border: oklch(91.4% 0.006 264.54);
   --color-input: oklch(91.4% 0.006 264.54);
-  --color-ring: oklch(55% 0.12 175);
+  --color-ring: oklch(70% 0.12 175);
   --radius: 0.5rem;
 }
 
@@ -30,26 +175,44 @@
   --color-card-foreground: oklch(98.5% 0.002 247.84);
   --color-popover: oklch(14.9% 0.028 265.75);
   --color-popover-foreground: oklch(98.5% 0.002 247.84);
-  --color-primary: oklch(55% 0.12 175);
+  --color-primary: oklch(70% 0.12 175);
   --color-primary-foreground: oklch(21% 0.034 264.66);
   --color-secondary: oklch(26.9% 0.015 265.75);
   --color-secondary-foreground: oklch(98.5% 0.002 247.84);
   --color-muted: oklch(26.9% 0.015 265.75);
   --color-muted-foreground: oklch(71.6% 0.012 254.13);
-  --color-accent: oklch(26.9% 0.015 265.75);
+  --color-accent: oklch(55% 0.2 330);
   --color-accent-foreground: oklch(98.5% 0.002 247.84);
   --color-destructive: oklch(42.3% 0.165 27.33);
   --color-destructive-foreground: oklch(98.5% 0.002 247.84);
   --color-border: oklch(26.9% 0.015 265.75);
   --color-input: oklch(26.9% 0.015 265.75);
-  --color-ring: oklch(55% 0.12 175);
+  --color-ring: oklch(70% 0.12 175);
 }
 
 * {
   border-color: var(--color-border);
 }
 
-body {
+html, body {
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
   background-color: var(--color-background);
   color: var(--color-foreground);
+}
+
+/* SIA Brand utility classes */
+.text-sia-teal {
+  color: #2BBFB3;
+}
+
+.text-sia-purple {
+  color: #A5338D;
+}
+
+.bg-sia-teal {
+  background-color: #2BBFB3;
+}
+
+.bg-sia-purple {
+  background-color: #A5338D;
 }

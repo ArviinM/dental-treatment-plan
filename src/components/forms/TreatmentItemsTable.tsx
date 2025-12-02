@@ -63,97 +63,83 @@ export function TreatmentItemsTable({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium w-24">
-                Item Code
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium">
-                Description
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium w-24">
-                Tooth
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium w-28">
-                Fee
-              </th>
-              <th className="px-4 py-3 w-12"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {items.map((item) => (
-              <tr key={item.id} className="group">
-                <td className="px-4 py-2">
-                  <Input
-                    value={item.itemCode}
-                    onChange={(e) =>
-                      updateItem(item.id, 'itemCode', e.target.value)
-                    }
-                    placeholder="e.g. 613"
-                    className="h-8"
-                    list="item-codes"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <Input
-                    value={item.description}
-                    onChange={(e) =>
-                      updateItem(item.id, 'description', e.target.value)
-                    }
-                    placeholder="Description auto-fills from code"
-                    className="h-8"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <Input
-                    value={item.tooth}
-                    onChange={(e) =>
-                      updateItem(item.id, 'tooth', e.target.value)
-                    }
-                    placeholder="e.g. 37"
-                    className="h-8"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <Input
-                    type="number"
-                    value={item.fee || ''}
-                    onChange={(e) =>
-                      updateItem(item.id, 'fee', parseFloat(e.target.value) || 0)
-                    }
-                    placeholder="0"
-                    className="h-8 text-right"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeRow(item.id)}
-                    disabled={items.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="bg-muted/30">
-            <tr>
-              <td colSpan={3} className="px-4 py-3 text-right font-semibold">
-                TOTAL AMOUNT:
-              </td>
-              <td className="px-4 py-3 text-right font-bold text-lg">
-                {formattedTotal}
-              </td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
+      {/* Treatment Items Cards */}
+      <div className="space-y-4">
+        {items.map((item, index) => (
+          <div key={item.id} className="rounded-lg border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">
+                Item #{index + 1}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+                onClick={() => removeRow(item.id)}
+                disabled={items.length === 1}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Item Code</label>
+                <Input
+                  value={item.itemCode}
+                  onChange={(e) =>
+                    updateItem(item.id, 'itemCode', e.target.value)
+                  }
+                  placeholder="e.g. 011"
+                  list="item-codes"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Tooth</label>
+                <Input
+                  value={item.tooth}
+                  onChange={(e) =>
+                    updateItem(item.id, 'tooth', e.target.value)
+                  }
+                  placeholder="e.g. 23"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Fee ($)</label>
+                <Input
+                  type="number"
+                  value={item.fee || ''}
+                  onChange={(e) =>
+                    updateItem(item.id, 'fee', parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Description</label>
+              <textarea
+                value={item.description}
+                onChange={(e) =>
+                  updateItem(item.id, 'description', e.target.value)
+                }
+                placeholder="Enter treatment description (supports multiple lines)..."
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                rows={3}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Total */}
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold">TOTAL AMOUNT:</span>
+          <span className="text-2xl font-bold text-sia-purple">{formattedTotal}</span>
+        </div>
       </div>
 
       <Button type="button" variant="outline" onClick={addRow} className="w-full">

@@ -1,22 +1,25 @@
-import { useState, useMemo } from 'react';
-import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
-import { FileDown, Eye, EyeOff } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { FileDown, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PatientInfoForm } from '@/components/forms/PatientInfoForm';
 import { TreatmentItemsTable } from '@/components/forms/TreatmentItemsTable';
-import { TreatmentPlanPDF } from '@/components/pdf/TreatmentPlanPDF';
+import { CanvasPreview } from '@/components/preview/CanvasPreview';
+import { TemplateUploader } from '@/components/settings/TemplateUploader';
+import { generateTreatmentPlanPdf, downloadPdf } from '@/services/pdfGenerator';
 import { useFeeCalculator } from '@/hooks/useFeeCalculator';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { defaultFeeSchedule } from '@/data/default-fee-schedule';
-import type { TreatmentItem, Location, FeeItem } from '@/types';
+import type { TreatmentItem, Location, FeeItem, TemplateSettings, TreatmentPlanData } from '@/types';
+import { DEFAULT_TEMPLATE_SETTINGS, LOCATION_TO_TEAM } from '@/types';
 
 function App() {
   // Patient Info State
   const [patientName, setPatientName] = useState('');
   const [doctorName, setDoctorName] = useState('');
+  const [doctorPhoto, setDoctorPhoto] = useState<string | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [location, setLocation] = useState<Location>('essendon');
 
@@ -31,25 +34,35 @@ function App() {
     defaultFeeSchedule
   );
 
+  // Template Settings (stored in localStorage)
+  const [templateSettings, setTemplateSettings] = useLocalStorage<TemplateSettings>(
+    'dental-template-settings-v2',
+    DEFAULT_TEMPLATE_SETTINGS
+  );
+
   // Preview toggle
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  
+  // PDF generation state
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Calculate totals
   const { totalAmount, formattedTotal } = useFeeCalculator(items);
 
-  // Memoize PDF document to prevent unnecessary re-renders
-  const pdfDocument = useMemo(
-    () => (
-      <TreatmentPlanPDF
-        patientName={patientName}
-        doctorName={doctorName}
-        location={location}
-        items={items}
-        totalAmount={totalAmount}
-      />
-    ),
-    [patientName, doctorName, location, items, totalAmount]
-  );
+  // Check if team page is available for selected location
+  const team = LOCATION_TO_TEAM[location];
+  const teamLabel = team === 'essendon' ? 'Essendon' : 'Burwood & Mulgrave';
+
+  // Treatment plan data for preview and PDF generation
+  const treatmentPlanData: TreatmentPlanData = useMemo(() => ({
+    patientName,
+    doctorName,
+    doctorPhoto: doctorPhoto || undefined,
+    date,
+    location,
+    items,
+    totalAmount,
+  }), [patientName, doctorName, doctorPhoto, date, location, items, totalAmount]);
 
   // Generate filename
   const filename = useMemo(() => {
@@ -58,20 +71,44 @@ function App() {
     return `TreatmentPlan_${sanitizedName}_${dateStr}.pdf`;
   }, [patientName, date]);
 
+  // Handle PDF download
+  const handleDownloadPdf = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const pdfBytes = await generateTreatmentPlanPdf({
+        data: treatmentPlanData,
+        settings: templateSettings,
+      });
+      downloadPdf(pdfBytes, filename);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [treatmentPlanData, templateSettings, filename]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#2BBFB3]/5 via-white to-[#A5338D]/5">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">
-                <span className="text-teal-600">Sia</span>
-                <span className="text-purple-600">Dental</span>
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Treatment Plan Generator
-              </p>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/brand/logo-favicon.png" 
+                alt="SIA Dental" 
+                className="h-10 w-10"
+              />
+      <div>
+                <h1 className="text-2xl font-bold">
+                  <span className="text-sia-teal">SIA</span>
+                  <span className="text-sia-purple">Dental</span>
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Treatment Plan Generator
+        </p>
+      </div>
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -90,14 +127,19 @@ function App() {
                   </>
                 )}
               </Button>
-              <PDFDownloadLink document={pdfDocument} fileName={filename}>
-                {({ loading }) => (
-                  <Button disabled={loading}>
+              <Button onClick={handleDownloadPdf} disabled={isGenerating}>
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
                     <FileDown className="h-4 w-4 mr-2" />
-                    {loading ? 'Generating...' : 'Download PDF'}
-                  </Button>
+                    Download PDF
+                  </>
                 )}
-              </PDFDownloadLink>
+              </Button>
             </div>
           </div>
         </div>
@@ -119,18 +161,33 @@ function App() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Patient & Doctor Information</CardTitle>
+                    <CardDescription>
+                      Enter the patient details and select the treating doctor and location.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <PatientInfoForm
                       patientName={patientName}
                       doctorName={doctorName}
+                      doctorPhoto={doctorPhoto}
                       date={date}
                       location={location}
                       onPatientNameChange={setPatientName}
                       onDoctorNameChange={setDoctorName}
+                      onDoctorPhotoChange={setDoctorPhoto}
                       onDateChange={setDate}
                       onLocationChange={setLocation}
                     />
+                    
+                    {/* Team page status */}
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Team page ({teamLabel}):
+                        </span>
+                        <span className="text-green-600 font-medium">✓ Ready</span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -138,6 +195,9 @@ function App() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Treatment Plan Items</CardTitle>
+                    <CardDescription>
+                      Add treatment items by typing the item code. Description and fee will auto-fill.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <TreatmentItemsTable
@@ -151,30 +211,19 @@ function App() {
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6 mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Template Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">
-                      Template background upload and positioning settings will be
-                      available here once you provide the template images.
-                    </p>
-                    <div className="mt-4 p-4 bg-muted rounded-lg">
-                      <h4 className="font-medium mb-2">Coming Soon:</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Upload Cover Page background image</li>
-                        <li>• Upload Table Page header/footer image</li>
-                        <li>• Configure text positions (X, Y coordinates)</li>
-                        <li>• Import/Export Fee Schedule (CSV)</li>
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Template Uploader */}
+                <TemplateUploader
+                  settings={templateSettings}
+                  onSettingsChange={setTemplateSettings}
+                />
 
+                {/* Fee Schedule */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Fee Schedule</CardTitle>
+                    <CardDescription>
+                      Item codes and their default descriptions and fees.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="max-h-96 overflow-y-auto">
@@ -191,7 +240,9 @@ function App() {
                             <tr key={item.code} className="border-b">
                               <td className="py-2 px-2 font-mono">{item.code}</td>
                               <td className="py-2 px-2 text-muted-foreground">
-                                {item.description.substring(0, 60)}...
+                                {item.description.length > 60
+                                  ? `${item.description.substring(0, 60)}...`
+                                  : item.description}
                               </td>
                               <td className="py-2 px-2 text-right">
                                 ${item.fee}
@@ -207,22 +258,21 @@ function App() {
             </Tabs>
           </div>
 
-          {/* PDF Preview Section */}
+          {/* Preview Section */}
           {showPreview && (
-            <div className="lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]">
-              <Card className="h-full">
+            <div className="space-y-4">
+              <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">PDF Preview</CardTitle>
+                  <CardTitle className="text-lg">Live Preview</CardTitle>
+                  <CardDescription>
+                    Navigate through pages to preview your treatment plan
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="h-[calc(100%-4rem)]">
-                  <PDFViewer
-                    width="100%"
-                    height="100%"
-                    className="rounded-lg border"
-                    showToolbar={false}
-                  >
-                    {pdfDocument}
-                  </PDFViewer>
+                <CardContent>
+                  <CanvasPreview
+                    data={treatmentPlanData}
+                    settings={templateSettings}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -233,7 +283,7 @@ function App() {
       {/* Footer */}
       <footer className="border-t bg-white/80 mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>SiaDental Treatment Plan Generator</p>
+          <p>SIA Dental Treatment Plan Generator</p>
         </div>
       </footer>
     </div>
