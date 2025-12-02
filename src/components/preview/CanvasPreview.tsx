@@ -201,7 +201,7 @@ function drawCoverPage(
   
   // Intro text position (above the white box)
   const introY = height - (580 * scale); // Position above the name box
-  ctx.fillText('A personalised cosmetic', width / 2, introY);
+  ctx.fillText('A personalised', width / 2, introY);
   ctx.fillText('treatment plan for:', width / 2, introY + (40 * scale));
 
   // Draw patient name (purple, centered in the white box area) - using font size from settings

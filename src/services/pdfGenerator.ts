@@ -89,7 +89,7 @@ export async function generateTreatmentPlanPdf({
   
   // Draw intro text above patient name box
   const introSize = 32;
-  const introLine1 = 'A personalised cosmetic';
+  const introLine1 = 'A personalised';
   const introLine2 = 'treatment plan for:';
   const introLine1Width = nunitoRegular.widthOfTextAtSize(introLine1, introSize);
   const introLine2Width = nunitoRegular.widthOfTextAtSize(introLine2, introSize);
