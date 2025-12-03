@@ -1,8 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import type { Location, TreatmentItem } from '@/types';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// Configure PDF.js worker using the local worker from node_modules
+// This uses Vite's ?url import to get the correct path
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export interface ParsedTreatmentPlan {
   patientName: string;
