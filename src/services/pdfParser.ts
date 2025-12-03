@@ -111,7 +111,7 @@ function parseDoctorName(lines: string[]): string {
 // Parse patient name - look for common patterns
 function parsePatientName(lines: string[]): string {
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i].trim();
     
     // Look for "Patient:" or "Name:" patterns
     const patientMatch = line.match(/(?:Patient|Name)[:\s]+(.+)/i);
@@ -119,10 +119,14 @@ function parsePatientName(lines: string[]): string {
       return patientMatch[1].trim();
     }
     
-    // Look for "Mr/Mrs/Ms/Dr" followed by name
-    const titleMatch = line.match(/^(Mr|Mrs|Ms|Miss|Dr)\.?\s+(.+)/i);
+    // Look for lines that are ONLY "Mr/Mrs/Ms/Miss/Dr" followed by a name
+    // This catches standalone patient name lines like "Mr Edison Nguyen"
+    const titleMatch = line.match(/^(Mr|Mrs|Ms|Miss|Dr)\.?\s+([A-Za-z]+(?:\s+[A-Za-z]+)*)$/i);
     if (titleMatch) {
-      return line.trim();
+      // Make sure this isn't part of doctor info (Plan by: Dr...)
+      if (!lines.some(l => l.includes('Plan by') && l.includes(line))) {
+        return line.trim();
+      }
     }
   }
   return '';
@@ -145,56 +149,84 @@ function parseDate(lines: string[]): string {
 }
 
 // Parse treatment items from table
+// Table structure: Phase | Visit No | Time Min | Item | Times | Description | Tooth | Fee | Amount
 function parseTreatmentItems(lines: string[]): TreatmentItem[] {
   const items: TreatmentItem[] = [];
+  const seenItemCodes = new Set<string>();
   
-  // Common dental item code patterns (3 digit codes)
-  const itemCodePattern = /^(\d{3})\s+/;
-  
-  // Look for lines that start with item codes
   for (const line of lines) {
-    const match = line.match(itemCodePattern);
-    if (match) {
-      const itemCode = match[1];
-      const restOfLine = line.substring(match[0].length).trim();
-      
-      // Try to parse: [tooth] [description] [qty] [fee]
-      // Example: "18 Extraction - Simple $180.00"
-      // Or: "Examination - Comprehensive $80.00"
-      
-      let tooth = '';
-      let description = '';
-      let fee = 0;
-      
-      // Extract fee from end of line
-      const feeMatch = restOfLine.match(/\$?([\d,]+\.?\d*)\s*$/);
-      if (feeMatch) {
-        fee = parseFloat(feeMatch[1].replace(',', ''));
-      }
-      
-      // Remove fee from line to get tooth and description
-      let remaining = restOfLine.replace(/\$?[\d,]+\.?\d*\s*$/, '').trim();
-      
-      // Check if line starts with tooth number (1-2 digits)
-      const toothMatch = remaining.match(/^(\d{1,2})\s+/);
-      if (toothMatch) {
-        tooth = toothMatch[1];
-        description = remaining.substring(toothMatch[0].length).trim();
-      } else {
-        description = remaining;
-      }
-      
-      // Remove quantity if present at end of description (e.g., "x1" or "1")
-      description = description.replace(/\s*x?\d+\s*$/, '').trim();
-      
-      if (itemCode && (description || fee > 0)) {
-        items.push({
-          id: crypto.randomUUID(),
-          itemCode,
-          tooth,
-          description,
-          fee,
+    // Skip header lines and non-data lines
+    if (line.includes('Phase') || line.includes('Visit') || line.includes('Item') ||
+        line.includes('Description') || line.includes('Tooth') || line.includes('Fee') ||
+        line.includes('Amount') || line.includes('NOTE:') || line.includes('TREATMENT PLAN') ||
+        line.includes('Date Created') || line.includes('Plan by') || line.includes('Card No') ||
+        line.includes('SIA Dental') || line.includes('Phone:') || line.includes('Email:') ||
+        line.includes('Patient Signature') || line.includes('Time left') ||
+        line.includes('Initial Estimated') || line.includes('Remaining') ||
+        line.includes('Amount for Phase')) {
+      continue;
+    }
+    
+    // Look for 3-digit item codes anywhere in the line
+    // Pattern: captures item code followed by quantity and description
+    // Example line: "1 532 1 Adhesive restoration - two surfaces - posterior tooth - direct 16 255.00 255.00"
+    
+    // Try to find a 3-digit dental item code (usually 0xx, 1xx, 2xx, 3xx, 4xx, 5xx, 6xx, 7xx, 8xx, 9xx)
+    const itemCodeMatches = line.match(/\b(\d{3})\b/g);
+    
+    if (itemCodeMatches) {
+      for (const potentialCode of itemCodeMatches) {
+        // Skip if this looks like a year, fee amount, or we've already seen this code
+        if (potentialCode.startsWith('20') || potentialCode.startsWith('19')) continue;
+        if (seenItemCodes.has(potentialCode)) continue;
+        
+        // Check if this is a valid dental item code (typically 011-999)
+        const codeNum = parseInt(potentialCode, 10);
+        if (codeNum < 11 || codeNum > 999) continue;
+        
+        // Found a potential item code, now parse the rest of the line
+        const itemCode = potentialCode;
+        
+        // Try to extract description, tooth, and fee from the line
+        // The line format after item code is typically: Times Description Tooth Fee Amount
+        
+        // Find all numbers in the line (could be tooth numbers or fees)
+        const numbers = line.match(/\b\d+\.?\d*\b/g) || [];
+        
+        // Look for decimal numbers (fees)
+        const fees = numbers.filter(n => n.includes('.') && parseFloat(n) > 10);
+        const fee = fees.length > 0 ? parseFloat(fees[0]) : 0;
+        
+        // Look for tooth numbers (1-48, typically)
+        const toothNumbers = numbers.filter(n => {
+          const num = parseInt(n, 10);
+          return !n.includes('.') && num >= 11 && num <= 48 && n !== itemCode;
         });
+        const tooth = toothNumbers.length > 0 ? toothNumbers[0] : '';
+        
+        // Extract description - everything that's not a number between the item code and tooth/fee
+        // Remove all numbers and get the remaining text
+        let description = line
+          .replace(/\b\d+\.?\d*\b/g, ' ')  // Remove all numbers
+          .replace(/\s+/g, ' ')             // Normalize whitespace
+          .trim();
+        
+        // Clean up description - remove common artifacts
+        description = description
+          .replace(/^[-–]\s*/, '')          // Remove leading dash
+          .replace(/\s*[-–]\s*$/, '')       // Remove trailing dash
+          .trim();
+        
+        if (itemCode && (description || fee > 0)) {
+          seenItemCodes.add(itemCode);
+          items.push({
+            id: crypto.randomUUID(),
+            itemCode,
+            tooth,
+            description,
+            fee,
+          });
+        }
       }
     }
   }
