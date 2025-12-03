@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
-import { FileDown, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef } from 'react';
+import { FileDown, Eye, EyeOff, Loader2, Upload } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { TreatmentItemsTable } from '@/components/forms/TreatmentItemsTable';
 import { CanvasPreview } from '@/components/preview/CanvasPreview';
 import { TemplateUploader } from '@/components/settings/TemplateUploader';
 import { generateTreatmentPlanPdf, downloadPdf } from '@/services/pdfGenerator';
+import { parseTreatmentPlanPdf } from '@/services/pdfParser';
 import { useFeeCalculator } from '@/hooks/useFeeCalculator';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { defaultFeeSchedule } from '@/data/default-fee-schedule';
@@ -45,6 +47,10 @@ function App() {
   
   // PDF generation state
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // PDF import state
+  const [isParsing, setIsParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate totals
   const { totalAmount, formattedTotal } = useFeeCalculator(items);
@@ -80,13 +86,75 @@ function App() {
         settings: templateSettings,
       });
       downloadPdf(pdfBytes, filename);
+      toast.success('PDF generated successfully!');
     } catch (error) {
       console.error('Failed to generate PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   }, [treatmentPlanData, templateSettings, filename]);
+
+  // Handle PDF import
+  const handleImportPdf = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsParsing(true);
+    toast.loading('Parsing treatment plan...', { id: 'parsing' });
+
+    try {
+      const result = await parseTreatmentPlanPdf(file);
+
+      if (!result.success) {
+        toast.error(result.errors[0]?.message || 'Failed to parse PDF', { id: 'parsing' });
+        return;
+      }
+
+      const { data } = result;
+      if (!data) {
+        toast.error('No data extracted from PDF', { id: 'parsing' });
+        return;
+      }
+
+      // Update form fields with extracted data
+      if (data.patientName) setPatientName(data.patientName);
+      if (data.doctorName) setDoctorName(data.doctorName);
+      if (data.location) setLocation(data.location);
+      if (data.date) setDate(data.date);
+      
+      // Update treatment items if found
+      if (data.items.length > 0) {
+        setItems(data.items);
+      }
+
+      // Show success with warnings if any
+      if (result.warnings.length > 0) {
+        toast.success(
+          <div>
+            <p className="font-medium">Treatment plan imported!</p>
+            <ul className="text-sm mt-1 text-muted-foreground">
+              {result.warnings.map((warning, i) => (
+                <li key={i}>• {warning}</li>
+              ))}
+            </ul>
+          </div>,
+          { id: 'parsing', duration: 5000 }
+        );
+      } else {
+        toast.success('Treatment plan imported successfully!', { id: 'parsing' });
+      }
+    } catch (error) {
+      console.error('Failed to parse PDF:', error);
+      toast.error('Failed to parse PDF. Please check the file and try again.', { id: 'parsing' });
+    } finally {
+      setIsParsing(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#2BBFB3]/5 via-white to-[#A5338D]/5">
@@ -111,6 +179,31 @@ function App() {
       </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Hidden file input for PDF import */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf"
+                onChange={handleImportPdf}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isParsing}
+              >
+                {isParsing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Plan
+                  </>
+                )}
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowPreview(!showPreview)}
@@ -286,6 +379,18 @@ function App() {
           <p>SIA Dental Treatment Plan Generator</p>
         </div>
       </footer>
+
+      {/* Toast notifications */}
+      <Toaster 
+        position="top-right" 
+        richColors 
+        closeButton
+        toastOptions={{
+          style: {
+            fontFamily: 'Nunito, sans-serif',
+          },
+        }}
+      />
     </div>
   );
 }
