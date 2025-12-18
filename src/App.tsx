@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { FileDown, Eye, EyeOff, Loader2, Upload } from 'lucide-react';
+import { FileDown, Eye, EyeOff, Loader2, Upload, Info } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -251,9 +251,10 @@ function App() {
           {/* Form Section */}
           <div className="space-y-6">
             <Tabs defaultValue="generator" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="generator">Generator</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="about">About</TabsTrigger>
               </TabsList>
 
               <TabsContent value="generator" className="space-y-6 mt-6">
@@ -351,6 +352,85 @@ function App() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="about" className="space-y-6 mt-6">
+                <Card className="border-sia-teal/20">
+                  <CardHeader className="bg-sia-teal/5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Info className="h-5 w-5 text-sia-teal" />
+                      <CardTitle>Project Overview</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Learn how the SIA Dental Treatment Plan Generator works.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-8">
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold text-sia-purple">The Vision</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        A professional, automated tool designed to transform how SIA Dental creates and manages treatment plans. 
+                        It moves away from manual data entry toward a smart, "one-click" experience that ensures every patient 
+                        receives a beautiful, consistent, and accurate document.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-6">
+                      <div className="space-y-2 p-4 rounded-xl bg-muted/30 border border-muted">
+                        <h4 className="font-bold flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sia-teal text-white text-xs">1</span>
+                          The "Smart Reader" (PDF Import)
+                        </h4>
+                        <p className="text-sm text-muted-foreground pl-8">
+                          Instead of typing everything from scratch, you can simply upload an old treatment plan. 
+                          The tool scanning the PDF, looks for keywords (like doctor names or item codes), 
+                          and automatically fills in the form for you.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 p-4 rounded-xl bg-muted/30 border border-muted">
+                        <h4 className="font-bold flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sia-teal text-white text-xs">2</span>
+                          The "Template" System
+                        </h4>
+                        <p className="text-sm text-muted-foreground pl-8">
+                          The tool uses official clinic templates as a foundation. It acts like a high-tech "digital stamp," 
+                          placing patient data and treatment rows in exact alignment with the SIA Dental branding.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 p-4 rounded-xl bg-muted/30 border border-muted">
+                        <h4 className="font-bold flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sia-teal text-white text-xs">3</span>
+                          "Auto-Pilot" Dentist Manager
+                        </h4>
+                        <p className="text-sm text-muted-foreground pl-8">
+                          A central brain that stores official dentist profiles. Selecting a name instantly pulls their 
+                          high-quality photo and selects the correct clinic location automatically. 
+                          It even crops photos into perfect circles with a teal border.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 p-4 rounded-xl bg-muted/30 border border-muted">
+                        <h4 className="font-bold flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sia-teal text-white text-xs">4</span>
+                          Real-Time "Live Preview"
+                        </h4>
+                        <p className="text-sm text-muted-foreground pl-8">
+                          What you see is what you get. As you type or add items, the preview updates instantly 
+                          on a digital canvas, ensuring 100% accuracy before you click download.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-dashed">
+                      <blockquote className="italic text-sm text-muted-foreground border-l-4 border-sia-purple pl-4 py-1">
+                        "The goal was to turn a manual, time-consuming process into a 10-second task that ensures 
+                        every patient gets a consistent, beautiful, and professional treatment plan every single time."
+                      </blockquote>
                     </div>
                   </CardContent>
                 </Card>
