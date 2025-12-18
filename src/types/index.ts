@@ -8,6 +8,7 @@ export interface PatientInfo {
 // Fee Schedule Item
 export interface FeeItem {
   code: string;
+  name: string;
   description: string;
   fee: number;
 }

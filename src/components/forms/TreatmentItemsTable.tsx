@@ -56,7 +56,10 @@ export function TreatmentItemsTable({
               (f) => f.code.toLowerCase() === String(value).toLowerCase()
             );
             if (feeItem) {
-              updated.description = feeItem.description;
+              // Format description as "Name - Description"
+              updated.description = feeItem.name 
+                ? `${feeItem.name} - ${feeItem.description}`
+                : feeItem.description;
               // Reset fees with the single fee from schedule
               updated.fees = [{ id: generateId(), quantity: 1, unitFee: feeItem.fee }];
             }
@@ -258,7 +261,7 @@ export function TreatmentItemsTable({
       <datalist id="item-codes">
         {feeSchedule.map((item) => (
           <option key={item.code} value={item.code}>
-            {item.code} - {item.description.substring(0, 50)}...
+            {item.code} - {item.name}
           </option>
         ))}
       </datalist>

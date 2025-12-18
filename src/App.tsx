@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { FileDown, Eye, EyeOff, Loader2, Upload, Info, AlertTriangle, RefreshCw, X } from 'lucide-react';
+import { FileDown, Eye, EyeOff, Loader2, Upload, Info, AlertTriangle, RefreshCw, X, BookOpen, MousePointerClick, Search, Settings, Download, FileText } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -331,8 +331,9 @@ function App() {
           {/* Form Section */}
           <div className="space-y-6">
             <Tabs defaultValue="generator" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="generator">Generator</TabsTrigger>
+                <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
                 <TabsTrigger value="about">About</TabsTrigger>
               </TabsList>
@@ -391,6 +392,192 @@ function App() {
                 </Card>
               </TabsContent>
 
+              <TabsContent value="tutorial" className="space-y-6 mt-6">
+                <Card className="border-sia-purple/20">
+                  <CardHeader className="bg-sia-purple/5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <BookOpen className="h-5 w-5 text-sia-purple" />
+                      <CardTitle>How to Use This Tool</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Follow these simple steps to create a professional treatment plan in seconds.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    {/* Quick Start */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-sia-teal flex items-center gap-2">
+                        <MousePointerClick className="h-5 w-5" />
+                        Quick Start Guide
+                      </h3>
+                      
+                      <div className="grid gap-4">
+                        <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-sia-teal/5 to-transparent border border-sia-teal/20">
+                          <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-sia-teal text-white font-bold">
+                            1
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Select a Doctor</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Choose the treating doctor from the dropdown. Their photo and default location will be automatically filled in.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-sia-teal/5 to-transparent border border-sia-teal/20">
+                          <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-sia-teal text-white font-bold">
+                            2
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Enter Patient Name & Date</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Type the patient's full name and select the treatment plan date.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-sia-teal/5 to-transparent border border-sia-teal/20">
+                          <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-sia-teal text-white font-bold">
+                            3
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Add Treatment Items</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Type an item code (e.g., "011", "114", "521") in the Item Code field. The description and fee will auto-fill. Add tooth numbers if needed and adjust quantities.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-sia-teal/5 to-transparent border border-sia-teal/20">
+                          <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-sia-teal text-white font-bold">
+                            4
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Download PDF</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Click the <strong>"Download PDF"</strong> button in the top-right corner. Your professional treatment plan is ready!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-dashed" />
+
+                    {/* Tips & Tricks */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-sia-purple flex items-center gap-2">
+                        <Search className="h-5 w-5" />
+                        Tips & Tricks
+                      </h3>
+
+                      <div className="grid gap-3">
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <FileText className="h-5 w-5 text-sia-teal flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">Import Existing Plans</p>
+                            <p className="text-xs text-muted-foreground">
+                              Click "Import Plan" to upload an existing PDF. The tool will automatically extract patient info and treatment items.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Search className="h-5 w-5 text-sia-teal flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">Search Item Codes</p>
+                            <p className="text-xs text-muted-foreground">
+                              Start typing in the Item Code field to search. You can search by code number or description keywords.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Eye className="h-5 w-5 text-sia-teal flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">Live Preview</p>
+                            <p className="text-xs text-muted-foreground">
+                              Watch the preview update in real-time as you type. Use the page navigation arrows to see all pages.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Settings className="h-5 w-5 text-sia-teal flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">Multiple Fees per Item</p>
+                            <p className="text-xs text-muted-foreground">
+                              Click the "+" button next to fees to add multiple fee entries for the same treatment item.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-dashed" />
+
+                    {/* Troubleshooting */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-amber-600 flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5" />
+                        Troubleshooting
+                      </h3>
+
+                      <div className="space-y-3">
+                        <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
+                          <p className="font-medium text-sm text-amber-800">Item codes not showing or outdated?</p>
+                          <p className="text-xs text-amber-700 mt-1">
+                            Go to the <strong>Settings</strong> tab and click <strong>"Reset to Default"</strong> in the Fee Schedule section. This will reload all the latest item codes and fees.
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
+                          <p className="font-medium text-sm text-amber-800">PDF looks different than expected?</p>
+                          <p className="text-xs text-amber-700 mt-1">
+                            Make sure you have the correct template uploaded in <strong>Settings → Template Images</strong>. You can upload custom templates for Page 1, Team Page, and Continuation pages.
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
+                          <p className="font-medium text-sm text-amber-800">Doctor photo not appearing?</p>
+                          <p className="text-xs text-amber-700 mt-1">
+                            Select a doctor from the dropdown list. If using a custom name, you can upload a photo manually by clicking the photo area.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Keyboard Shortcuts */}
+                    <div className="pt-4 border-t">
+                      <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                        <Download className="h-4 w-4" />
+                        Quick Reference
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                          <span className="text-muted-foreground">Add new row</span>
+                          <span className="font-mono bg-background px-2 py-0.5 rounded border">+ Button</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                          <span className="text-muted-foreground">Delete row</span>
+                          <span className="font-mono bg-background px-2 py-0.5 rounded border">🗑️ Button</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                          <span className="text-muted-foreground">Search codes</span>
+                          <span className="font-mono bg-background px-2 py-0.5 rounded border">Type in field</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                          <span className="text-muted-foreground">Toggle preview</span>
+                          <span className="font-mono bg-background px-2 py-0.5 rounded border">👁️ Button</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               <TabsContent value="settings" className="space-y-6 mt-6">
                 {/* Template Uploader */}
                 <TemplateUploader
@@ -428,6 +615,7 @@ function App() {
                         <thead className="sticky top-0 bg-background">
                           <tr className="border-b">
                             <th className="text-left py-2 px-2">Code</th>
+                            <th className="text-left py-2 px-2">Item Name</th>
                             <th className="text-left py-2 px-2">Description</th>
                             <th className="text-right py-2 px-2">Fee</th>
                           </tr>
@@ -436,6 +624,7 @@ function App() {
                           {feeSchedule.map((item) => (
                             <tr key={item.code} className="border-b">
                               <td className="py-2 px-2 font-mono">{item.code}</td>
+                              <td className="py-2 px-2 font-medium">{item.name}</td>
                               <td className="py-2 px-2 text-muted-foreground">
                                 {item.description.length > 60
                                   ? `${item.description.substring(0, 60)}...`
