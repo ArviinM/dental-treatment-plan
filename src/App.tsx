@@ -57,7 +57,7 @@ function App() {
 
   // Check if team page is available for selected location
   const team = LOCATION_TO_TEAM[location];
-  const teamLabel = team === 'essendon' ? 'Essendon' : 'Burwood & Mulgrave';
+  const teamLabel = team.charAt(0).toUpperCase() + team.slice(1);
 
   // Treatment plan data for preview and PDF generation
   const treatmentPlanData: TreatmentPlanData = useMemo(() => ({
@@ -120,6 +120,7 @@ function App() {
       // Update form fields with extracted data
       if (data.patientName) setPatientName(data.patientName);
       if (data.doctorName) setDoctorName(data.doctorName);
+      if (data.doctorPhoto) setDoctorPhoto(data.doctorPhoto);
       if (data.location) setLocation(data.location);
       if (data.date) setDate(data.date);
       

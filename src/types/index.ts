@@ -24,14 +24,14 @@ export interface TreatmentItem {
 // Location
 export type Location = 'essendon' | 'burwood' | 'mulgrave';
 
-// Team identifier (Burwood & Mulgrave share the same team)
-export type Team = 'essendon' | 'burwood-mulgrave';
+// Team identifier
+export type Team = 'essendon' | 'burwood' | 'mulgrave';
 
 // Map location to team
 export const LOCATION_TO_TEAM: Record<Location, Team> = {
   essendon: 'essendon',
-  burwood: 'burwood-mulgrave',
-  mulgrave: 'burwood-mulgrave',
+  burwood: 'burwood',
+  mulgrave: 'mulgrave',
 };
 
 // Template Settings (using PDF files)
@@ -41,7 +41,8 @@ export interface TemplateSettings {
   treatmentPdf: string;          // Path to treatment page PDF (blank)
   teamPdfs: {
     essendon: string;            // Path to Essendon team PDF
-    'burwood-mulgrave': string;  // Path to Burwood/Mulgrave team PDF
+    burwood: string;             // Path to Burwood team PDF
+    mulgrave: string;            // Path to Mulgrave team PDF
   };
   
   // Text positioning on cover page (in PDF points, origin bottom-left)
@@ -93,7 +94,8 @@ export const DEFAULT_TEMPLATE_PATHS = {
   treatmentPdf: '/templates/TreatmentPlanBlank.pdf', // Page 2 of same PDF
   teamPdfs: {
     essendon: '/templates/essendon-team.pdf',
-    'burwood-mulgrave': '/templates/burwood-mulgrave-team.pdf',
+    burwood: '/templates/burwood-team.pdf',
+    mulgrave: '/templates/mulgrave-team.pdf',
   },
   // Preview images (for canvas)
   coverImage: '/templates/TreatmentPlanBlank-1.png',
@@ -101,7 +103,8 @@ export const DEFAULT_TEMPLATE_PATHS = {
   continuationImage: '/templates/TreatmentPlanBlank-3.png',
   teamImages: {
     essendon: '/templates/essendon-team.png',
-    'burwood-mulgrave': '/templates/burwood-mulgrave-team.png',
+    burwood: '/templates/burwood-team.png',
+    mulgrave: '/templates/mulgrave-team.png',
   },
 };
 
@@ -117,7 +120,7 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
   treatmentPdf: DEFAULT_TEMPLATE_PATHS.treatmentPdf,
   teamPdfs: DEFAULT_TEMPLATE_PATHS.teamPdfs,
   // Patient name box - centered horizontally, positioned in the white box area
-  patientNamePosition: { x: 405, y: 419 },
+  patientNamePosition: { x: 405, y: 405 },
   patientNameFontSize: 58,
   // Doctor name - positioned near bottom left, next to doctor photo
   doctorNamePosition: { x: 181, y: 170 },

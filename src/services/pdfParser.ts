@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import type { Location, TreatmentItem } from '@/types';
+import { getDentistByName } from '@/data/dentists';
 
 // Configure PDF.js worker using the local worker from node_modules
 // This uses Vite's ?url import to get the correct path
@@ -9,6 +10,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 export interface ParsedTreatmentPlan {
   patientName: string;
   doctorName: string;
+  doctorPhoto?: string;
   location: Location | null;
   date: string;
   items: TreatmentItem[];
@@ -335,8 +337,23 @@ export async function parseTreatmentPlanPdf(file: File): Promise<ParseResult> {
     const date = parseDate(lines);
     const items = parseTreatmentItems(lines);
     
+    // Auto-detect dentist photo and refine location if possible
+    let doctorPhoto: string | undefined;
+    let finalLocation = location;
+
+    if (doctorName) {
+      const dentist = getDentistByName(doctorName);
+      if (dentist) {
+        doctorPhoto = dentist.photoUrl;
+        // If location wasn't detected but dentist belongs to only one location, use it
+        if (!finalLocation && dentist.locations.length === 1) {
+          finalLocation = dentist.locations[0];
+        }
+      }
+    }
+    
     // Validate extracted data
-    if (!location) {
+    if (!finalLocation) {
       warnings.push('Could not detect clinic location. Please select manually.');
     }
     
@@ -357,7 +374,8 @@ export async function parseTreatmentPlanPdf(file: File): Promise<ParseResult> {
       data: {
         patientName,
         doctorName,
-        location,
+        doctorPhoto,
+        location: finalLocation,
         date,
         items,
       },

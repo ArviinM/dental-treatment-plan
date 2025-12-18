@@ -42,6 +42,89 @@ function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Fetch image from URL or use base64 and crop to circle
+async function fetchAndCropImage(imageSource: string): Promise<{ bytes: Uint8Array, isPng: boolean }> {
+  let imageBytes: Uint8Array;
+  let isPng: boolean;
+
+  if (imageSource.startsWith('data:')) {
+    isPng = imageSource.includes('image/png');
+    const base64Data = imageSource.split(',')[1];
+    imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+  } else {
+    const response = await fetch(imageSource);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${imageSource}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    imageBytes = new Uint8Array(arrayBuffer);
+    isPng = imageSource.toLowerCase().endsWith('.png');
+  }
+
+  // Crop to circle using Canvas API
+  return new Promise((resolve, reject) => {
+    // Use any cast to bypass SharedArrayBuffer vs ArrayBuffer type issues in some environments
+    const blob = new Blob([imageBytes.buffer as any], { type: isPng ? 'image/png' : 'image/jpeg' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const size = Math.min(img.width, img.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      
+      // Create circular clip
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      
+      // Draw image centered and cropped
+      ctx.drawImage(
+        img,
+        (img.width - size) / 2,
+        (img.height - size) / 2,
+        size,
+        size,
+        0,
+        0,
+        size,
+        size
+      );
+      
+      canvas.toBlob((resultBlob) => {
+        if (!resultBlob) {
+          reject(new Error('Failed to create blob from canvas'));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({
+            bytes: new Uint8Array(reader.result as ArrayBuffer),
+            isPng: true // Canvas toBlob defaults to PNG or we force it to PNG for transparency
+          });
+        };
+        reader.readAsArrayBuffer(resultBlob);
+      }, 'image/png');
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image for cropping'));
+    };
+    
+    img.src = url;
+  });
+}
+
 export async function generateTreatmentPlanPdf({
   data,
   settings,
@@ -124,28 +207,42 @@ export async function generateTreatmentPlanPdf({
   // Draw doctor photo if available (using settings for position)
   if (data.doctorPhoto) {
     try {
-      // Convert base64 to bytes
-      const base64Data = data.doctorPhoto.split(',')[1];
-      const photoBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      const { bytes: photoBytes } = await fetchAndCropImage(data.doctorPhoto);
       
-      // Detect image type and embed
-      let embeddedImage;
-      if (data.doctorPhoto.includes('image/png')) {
-        embeddedImage = await pdfDoc.embedPng(photoBytes);
-      } else {
-        embeddedImage = await pdfDoc.embedJpg(photoBytes);
-      }
+      // Embed as PNG (since fetchAndCropImage returns PNG with transparency)
+      const embeddedImage = await pdfDoc.embedPng(photoBytes);
       
       // Photo dimensions and position from settings
       const photoSize = settings.doctorPhotoPosition.size;
       const photoX = settings.doctorPhotoPosition.x;
       const photoY = settings.doctorPhotoPosition.y;
       
+      // Draw a white rectangle first to mask any photo in the template background
+      // We make it slightly larger than the photo to ensure full coverage
+      coverPage.drawRectangle({
+        x: photoX - 5,
+        y: photoY - 5,
+        width: photoSize + 14,
+        height: photoSize + 14,
+        color: COLORS.white,
+      });
+
+      // Draw the circular photo
       coverPage.drawImage(embeddedImage, {
         x: photoX,
         y: photoY,
         width: photoSize,
         height: photoSize,
+      });
+
+      // Draw circular teal border (matching UI)
+      const borderThickness = 3;
+      coverPage.drawCircle({
+        x: photoX + photoSize / 2,
+        y: photoY + photoSize / 2,
+        size: photoSize / 2,
+        borderColor: COLORS.siaTeal,
+        borderWidth: borderThickness,
       });
     } catch (error) {
       console.error('Failed to embed doctor photo:', error);

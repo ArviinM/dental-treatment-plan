@@ -32,7 +32,8 @@ export function CanvasPreview({ data, settings }: CanvasPreviewProps) {
       { key: 'treatment', src: DEFAULT_TEMPLATE_PATHS.treatmentImage },
       { key: 'continuation', src: DEFAULT_TEMPLATE_PATHS.continuationImage },
       { key: 'team-essendon', src: DEFAULT_TEMPLATE_PATHS.teamImages.essendon },
-      { key: 'team-burwood-mulgrave', src: DEFAULT_TEMPLATE_PATHS.teamImages['burwood-mulgrave'] },
+      { key: 'team-burwood', src: DEFAULT_TEMPLATE_PATHS.teamImages.burwood },
+      { key: 'team-mulgrave', src: DEFAULT_TEMPLATE_PATHS.teamImages.mulgrave },
     ];
 
     let loadedCount = 0;

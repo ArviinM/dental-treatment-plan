@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import type { Location } from '@/types';
 import { LOCATIONS } from '@/types';
+import { DENTISTS } from '@/data/dentists';
 
 interface PatientInfoFormProps {
   patientName: string;
@@ -57,6 +58,22 @@ export function PatientInfoForm({
     }
   };
 
+  const handleDoctorSelect = (dentistId: string) => {
+    const dentist = DENTISTS.find(d => d.id === dentistId);
+    if (dentist) {
+      onDoctorNameChange(dentist.name);
+      onDoctorPhotoChange(dentist.photoUrl);
+      
+      // If the dentist is only in one location, auto-select it
+      if (dentist.locations.length === 1) {
+        onLocationChange(dentist.locations[0]);
+      } else if (!dentist.locations.includes(location)) {
+        // If current location isn't one of the dentist's locations, select their first location
+        onLocationChange(dentist.locations[0]);
+      }
+    }
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="space-y-2">
@@ -71,12 +88,37 @@ export function PatientInfoForm({
 
       <div className="space-y-2">
         <Label htmlFor="doctorName">Doctor / Dentist Name</Label>
-        <Input
-          id="doctorName"
-          value={doctorName}
-          onChange={(e) => onDoctorNameChange(e.target.value)}
-          placeholder="e.g. Dr. Esther Chin"
-        />
+        <Select 
+          value={DENTISTS.find(d => d.name === doctorName)?.id || 'custom'} 
+          onValueChange={handleDoctorSelect}
+        >
+          <SelectTrigger id="doctorName">
+            <SelectValue placeholder="Select dentist" />
+          </SelectTrigger>
+          <SelectContent>
+            {DENTISTS.map((dentist) => (
+              <SelectItem key={dentist.id} value={dentist.id}>
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={dentist.photoUrl} 
+                    alt={dentist.name} 
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                  <span>{dentist.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+            <SelectItem value="custom">Custom / Other</SelectItem>
+          </SelectContent>
+        </Select>
+        {(!DENTISTS.some(d => d.name === doctorName) || doctorName === '') && (
+          <Input
+            value={doctorName}
+            onChange={(e) => onDoctorNameChange(e.target.value)}
+            placeholder="Enter doctor name manually"
+            className="mt-2"
+          />
+        )}
       </div>
 
       <div className="space-y-2">

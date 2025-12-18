@@ -56,7 +56,8 @@ export function TemplateUploader({ settings, onSettingsChange }: TemplateUploade
                 <ul className="space-y-1">
                   <li>• <code className="text-xs bg-muted px-1 rounded">TreatmentPlanBlank.pdf</code> - Cover & Treatment pages</li>
                   <li>• <code className="text-xs bg-muted px-1 rounded">essendon-team.pdf</code> - Essendon team page</li>
-                  <li>• <code className="text-xs bg-muted px-1 rounded">burwood-mulgrave-team.pdf</code> - Burwood/Mulgrave team page</li>
+                  <li>• <code className="text-xs bg-muted px-1 rounded">burwood-team.pdf</code> - Burwood team page</li>
+                  <li>• <code className="text-xs bg-muted px-1 rounded">mulgrave-team.pdf</code> - Mulgrave team page</li>
                 </ul>
               </div>
             </div>
