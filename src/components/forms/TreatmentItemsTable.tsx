@@ -192,7 +192,7 @@ export function TreatmentItemsTable({
               </div>
 
               <div className="space-y-2">
-                {item.fees.map((fee, fIndex) => (
+                {item.fees.map((fee) => (
                   <div key={fee.id} className="flex items-end gap-3 bg-muted/30 p-2 rounded-md">
                     <div className="w-20 space-y-1">
                       <Label className="text-[10px] uppercase text-muted-foreground">Qty</Label>
