@@ -1,0 +1,294 @@
+"Category: DIAGNOSTIC
+Subcategory: Examinations",,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+011,Comprehensive Oral Examination,84.00,0.00,Variable,0.00,0.00,0.00
+012,Periodic Oral Examination,76.00,0.00,Variable,0.00,0.00,0.00
+013,Oral Examination Limited,70.00,0.00,Variable,0.00,0.00,0.00
+014,Consultation,84.00,0.00,Variable,0.00,0.00,0.00
+015,Consultation - Extended (30Mins Or More),120.00,0.00,Variable,0.00,0.00,0.00
+018,Written Report (Not Elsewhere Completed),147.00,10.00,Variable,0.00,0.00,0.00
+Subcategory: Radiological,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+022,Intraoral Periapical Or Bitewing Radiograph - per exposu,48.00,0.00,Variable,0.00,0.00,0.00
+037,Panormanic Radiograph - per exposure,133.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Other,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+047,Saliva Screening Test,72.00,0.00,Variable,0.00,0.00,0.00
+061,Pulp Testing - per appointment,45.00,0.00,Variable,0.00,0.00,0.00
+071,Diagnostic Model - per model,81.00,0.00,Variable,0.00,0.00,0.00
+072,Photographic Records - Intraoral - per appointment,45.00,0.00,Variable,0.00,0.00,0.00
+073,Photographic Records - Extraoral - per appointment,53.00,0.00,Variable,0.00,0.00,0.00
+074,Diagnostic wax-up,115.00,0.00,Variable,0.00,0.00,0.00
+075,Diagnostic Modelling,84.00,0.00,Variable,0.00,0.00,0.00
+Category: PREVENTATIVE Subcategory: Dental Prophylaxis,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+111,Removal Of Plaque and/or Stain,95.00,0.00,Variable,0.00,0.00,0.00
+113,Recontouring & Polishing of Pre-Existing Restoration(S),69.00,0.00,Variable,0.00,0.00,0.00
+114,Removal Of Calculus - first appointment,127.00,0.00,Variable,0.00,0.00,0.00
+115,Removal of calculus - subsequent appointment,145.00,0.00,Variable,0.00,0.00,0.00
+116,Enamel micro-abrasion - per tooth,52.00,0.00,Variable,0.00,0.00,0.00
+117,"Bleaching, Internal - per tooth",352.00,0.00,Variable,0.00,0.00,0.00
+118,"Bleaching, External - per tooth",55.00,0.00,Variable,0.00,0.00,0.00
+119,"Bleaching, Home Application - per arch",197.50,0.00,Variable,0.00,0.00,0.00
+Subcategory: Topical Fluoride,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+121,Topical Application Of Remineralisation &/or Cariostatic,38.00,0.00,Variable,0.00,0.00,0.00
+122,"Topical Remineralisation &/or Cariostatic Agents, Home",53.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Other,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+123,"Concentrated Remineralsation &/or Cariostatic Agents,",26.00,0.00,Variable,0.00,0.00,0.00
+131,Dietary Analysis & Advice,53.00,0.00,Variable,0.00,0.00,0.00
+141,Oral Hygiene Instruction,55.00,0.00,Variable,0.00,0.00,0.00
+142,Tobacco Counselling,55.00,0.00,Variable,0.00,0.00,0.00
+151,Provision of Mouthguard - Indirect T,260.00,10.00,Variable,0.00,0.00,0.00
+161,Fissure and/or tooth surface Sealing - Per Tooth,62.00,0.00,Variable,0.00,0.00,0.00
+165,Desensitising Procedure - Per Appointment,42.00,0.00,Variable,0.00,0.00,0.00
+171,Odontoplasty - Per Tooth,80.00,0.00,Variable,0.00,0.00,0.00
+"Category: PERIODONTICS
+Subcategory: Perio",,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+213,Treatment of Acute Periodontal Infection - per appointme,141.00,0.00,Variable,0.00,0.00,0.00
+221,Clinical Periodontal Analysis & Recording,70.00,0.00,Variable,0.00,0.00,0.00
+222,Periodontal Debridement - per tooth,48.00,0.00,Variable,0.00,0.00,0.00
+223,Non-Surgical Treatment Of Peri-Implant Disease - per im,194.00,0.00,Variable,0.00,0.00,0.00
+232,Periodontal Flap Surgery - per tooth,345.00,0.00,Variable,0.00,0.00,0.00
+250,Active Non-Surgical Periodontal Therapy - per quadrant,260.00,0.00,Variable,0.00,0.00,0.00
+251,Supportive Periodontal Therapy - per appointment,232.00,0.00,Variable,0.00,0.00,0.00
+Category: ORAL SURGERY Subcategory: Extractions,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+311,Removal Of Tooth Or Part(s) Thereof,225.00,0.00,Variable,0.00,0.00,0.00
+314,Sectional Removal of a Tooth or part(s) thereof,290.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Surgical Extractions,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+322,Surgical removal of a tooth or fragment not requiring rem,322.00,0.00,Variable,0.00,0.00,0.00
+324,Surgical removal of a tooth or fragment requiring both re,440.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Surgery for Prostheses,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+332,Osteotomy - per jaw,365.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: General Surgical,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+378,Surgical Removal Of Foreign Body,174.00,0.00,Variable,0.00,0.00,0.00
+379,Marsupialisation Of Cyst,180.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Other,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+381,Surgical Exposure Of Unerupted Tooth - per tooth,230.00,0.00,Variable,0.00,0.00,0.00
+384,Repositioning of displaced tooth/teeth - per tooth,122.00,0.00,Variable,0.00,0.00,0.00
+386,Splinting of displaced tooth/teeth - per tooth,243.00,0.00,Variable,0.00,0.00,0.00
+391,Frenectomy,296.00,0.00,Variable,0.00,0.00,0.00
+392,Drainage of abscess,130.00,0.00,Variable,0.00,0.00,0.00
+Category: ENDODONTICS Subcategory: Pulp Treatment,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+411,Direct Pulp Capping,68.00,0.00,Variable,0.00,0.00,0.00
+414,Pulpotomy,161.00,0.00,Variable,0.00,0.00,0.00
+415,Complete chemo-mechanical preparation of root canal -,305.00,0.00,Variable,0.00,0.00,0.00
+416,Complete chemo-mechanical preparation of root canal -,160.00,0.00,Variable,0.00,0.00,0.00
+417,Root Canal Obturation  - one canal,303.00,0.00,Variable,0.00,0.00,0.00
+418,Root Canal Obturation  - each additional canal,187.00,0.00,Variable,0.00,0.00,0.00
+419,Extirpation of pulp or debridement of root canal(s) - emer,350.00,0.00,Variable,0.00,0.00,0.00
+"Category: ENDODONTICS
+Subcategory: Other",,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+451,Removal Of Root Filling - per canal,175.00,0.00,Variable,0.00,0.00,0.00
+452,Removal of a cemented root canal post or post crown,352.00,0.00,Variable,0.00,0.00,0.00
+455,Additional visit for irrigation and/or dressing of the root c,188.00,0.00,Variable,0.00,0.00,0.00
+"Category: RESTORATIVE Subcategory: GIC, Composite",,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+521,Adhesive restoration - one surface - anterior tooth - direc,213.00,0.00,Variable,0.00,0.00,0.00
+522,Adhesive restoration - two surfaces - anterior tooth - dire,230.00,0.00,Variable,0.00,0.00,0.00
+523,Adhesive restoration - three surfaces - anterior tooth - dir,266.00,0.00,Variable,0.00,0.00,0.00
+524,Adhesive restoration - four surfaces - anterior tooth - dire,320.00,0.00,Variable,0.00,0.00,0.00
+525,Adhesive restoration - five surfaces - anterior tooth - dire,365.00,0.00,Variable,0.00,0.00,0.00
+526,Adhesive restoration - veneer - anterior tooth - direct,469.00,0.00,Variable,0.00,0.00,0.00
+531,Adhesive restoration - one surface - posterior tooth - dire,214.00,0.00,Variable,0.00,0.00,0.00
+532,Adhesive restoration - two surfaces - posterior tooth - dir,255.00,0.00,Variable,0.00,0.00,0.00
+533,Adhesive restoration - three surfaces - posterior tooth - d,299.00,0.00,Variable,0.00,0.00,0.00
+534,Adhesive restoration - four surfaces - posterior tooth - dir,341.00,0.00,Variable,0.00,0.00,0.00
+535,Adhesive restoration - five surfaces - posterior tooth - dir,384.00,0.00,Variable,0.00,0.00,0.00
+536,Adhesive restoration - veneer - posterior tooth - direct,458.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Inlays / Onlays,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+551,Tooth-coloured restoration - one surface - indirect,1106.00,0.00,Variable,0.00,0.00,0.00
+552,Tooth-coloured restoration - two surfaces - indirect,1275.0,0.00,Variable,0.00,0.00,0.00
+553,Tooth-coloured restoration - three surfaces - indirect,1456.0,0.00,Variable,0.00,0.00,0.00
+554,Tooth-coloured restoration - four surfaces - indirect,1638.0,0.00,Variable,0.00,0.00,0.00
+555,Tooth-coloured restoration - five surfaces - indirect,1805.0,0.00,Variable,0.00,0.00,0.00
+556,Tooth-coloured - veneer - indirect,1638.0,0.00,Variable,0.00,0.00,0.00
+Subcategory: Other,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+572,Provisional (intermediate/temp) Restoration  - per tooth,183.00,0.00,Variable,0.00,0.00,0.00
+574,Metal Band,146.00,0.00,Variable,0.00,0.00,0.00
+575,Pin Retention  - per pin,55.00,0.00,Variable,0.00,0.00,0.00
+577,Cusp Capping  - Per Cusp,56.00,0.00,Variable,0.00,0.00,0.00
+578,Restoration of an incisal corner - per corner,56.00,0.00,Variable,0.00,0.00,0.00
+579,Bonding Of Tooth Fragment,208.00,0.00,Variable,0.00,0.00,0.00
+586,Crown - Metallic - With Tooth Preparation  - Preformed,588.00,0.00,Variable,0.00,0.00,0.00
+587,Crown - Metallic - Minimal Tooth Preparation  - Preforme,600.00,0.00,Variable,0.00,0.00,0.00
+588,Crown - tooth-coloured - preformed,1148.00,0.00,Variable,0.00,0.00,0.00
+595,Removal of Indirect Restoration,161.00,0.00,Variable,0.00,0.00,0.00
+596,Recementing Of Indirect Restoration,142.00,0.00,Variable,0.00,0.00,0.00
+597,Post - direct,238.00,0.00,Variable,0.00,0.00,0.00
+Category: CROWN AND BRIDGE Subcategory: Crowns,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+611,Full crown - acrylic resin - indirect,1941.0,0.00,Variable,0.00,0.00,0.00
+613,Full crown - non-metallic - indirect,1750.0,0.00,Variable,0.00,0.00,0.00
+"Category: CROWN AND BRIDGE
+Subcategory: Crowns",,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+615,Full crown - veneered - indirect,1941.0,0.00,Variable,0.00,0.00,0.00
+618,Full crown - metallic - indirect,1941.0,0.00,Variable,0.00,0.00,0.00
+625,Post and core for crown - indirect,570.00,0.00,Variable,0.00,0.00,0.00
+627,Post and root cap - indirect,306.00,0.00,Variable,0.00,0.00,0.00
+629,Post and root cap - indirect,255.00,0.00,Variable,0.00,0.00,0.00
+631,Provisional crown - per tooth,289.00,0.00,Variable,0.00,0.00,0.00
+632,Provisional bridge pontic - per pontic,327.00,0.00,Variable,0.00,0.00,0.00
+633,Provisional implant abutment - per abutment,428.00,0.00,Variable,0.00,0.00,0.00
+634,Provisional implant restoration - per implant abutment,517.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Bridges,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+643,Bridge pontic - indirect - per pontic,1528.0,0.00,Variable,0.00,0.00,0.00
+644,Semi fixed attachment,155.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Repairs,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+651,Recementing Crown or Veneer,202.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Implants,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+661,Fitting of implant abutment - per abutment,1136.00,0.00,Variable,0.00,0.00,0.00
+665,Prosthesis with resin base attached to implants - remova,2217.0,0.00,Variable,0.00,0.00,0.00
+666,Prosthesis with metal frame attached to implants - fixed -,4088.0,0.00,Variable,0.00,0.00,0.00
+667,Prosthesis with metal frame attached to implants - remov,3638.0,0.00,Variable,0.00,0.00,0.00
+672,Full crown attached to osseointegrated implant - veneere,2421.0,0.00,Variable,0.00,0.00,0.00
+688,Insertion of one-stage endosseous implant - per implant,3033.0,0.00,Variable,0.00,0.00,0.00
+Category: PROSTHODONTICS Subcategory: New Dentures / components,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+711,Complete Maxillary Denture,1848.0,0.00,Variable,0.00,0.00,0.00
+712,Complete Mandibular Denture,1848.0,0.00,Variable,0.00,0.00,0.00
+713,Provisional Complete Maxillary Denture,702.00,0.00,Variable,0.00,0.00,0.00
+714,Provisional Complete Mandibular Denture,702.00,0.00,Variable,0.00,0.00,0.00
+719,Complete maxillary and mandibular dentures,3465.0,0.00,Variable,0.00,0.00,0.00
+721,Partial Maxillary denture  - resin base,1560.0,0.00,Variable,0.00,0.00,0.00
+722,Partial Mandibular denture  - resin base,1560.0,0.00,Variable,0.00,0.00,0.00
+727,Partial Maxillary denture - cast metal framework,2195.0,0.00,Variable,0.00,0.00,0.00
+728,Partial Mandibular denture - cast metal framework,1931.0,0.00,Variable,0.00,0.00,0.00
+731,Retainer - per tooth,78.00,0.00,Variable,0.00,0.00,0.00
+732,Occlusal rest - per rest,35.00,0.00,Variable,0.00,0.00,0.00
+733,Tooth/Teeth (partial denture),68.00,0.00,Variable,0.00,0.00,0.00
+736,Immediate Tooth Replacement  - per tooth,17.00,0.00,Variable,0.00,0.00,0.00
+737,Resilient Lining,347.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Denture Maintenance,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+741,Adjustment of a denture,88.00,0.00,Variable,0.00,0.00,0.00
+743,Relining - complete denture - processed,636.00,0.00,Variable,0.00,0.00,0.00
+"Category: PROSTHODONTICS
+Subcategory: Denture Maintenance",,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+744,Relining - partial denture - processed,461.00,0.00,Variable,0.00,0.00,0.00
+751,Relining - complete denture - direct,388.00,0.00,Variable,0.00,0.00,0.00
+752,Relining - partial denture - direct,453.00,0.00,Variable,0.00,0.00,0.00
+754,Denture base modification,230.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Denture Repairs,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+761,Reattaching pre-existing Clasp to denture,155.00,0.00,Variable,0.00,0.00,0.00
+762,Replace/adding Clasp to denture - per clasp,115.00,0.00,Variable,0.00,0.00,0.00
+763,Repair Broken base of a complete denture,296.00,0.00,Variable,0.00,0.00,0.00
+768,Adding tooth to partial denture to replace an extracted or,242.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Other,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+776,Impression - Denture repair/modification,83.00,0.00,Variable,0.00,0.00,0.00
+Category: ORTHODONTICS Subcategory: Removable Appliances,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+811,Passive removable appliance - per arch,350.00,0.00,Variable,0.00,0.00,0.00
+821,Active Removable Appliance - per arch,1044.0,0.00,Variable,0.00,0.00,0.00
+823,Functional orthopaedic appliance - custom fabrication,1614.0,0.00,Variable,0.00,0.00,0.00
+825,Sequential plastic aligners - per arch,3396.0,0.00,Variable,0.00,0.00,0.00
+Subcategory: Fixed Appliances,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+831,Full arch banding - per arch,3448.0,0.00,Variable,0.00,0.00,0.00
+843,3 Expansion appliance - fixed - per arch,1417.0,0.00,Variable,0.00,0.00,0.00
+Subcategory: Other,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+876,"Repair of removable appliance - clasp, spring or tooth",479.00,0.00,Variable,0.00,0.00,0.00
+878,Relining - removable appliance - processed,581.00,0.00,Variable,0.00,0.00,0.00
+Category: GENERAL Subcategory: Emergencies,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+911,Palliative care,108.00,0.00,Variable,0.00,0.00,0.00
+915,After-hours callout,110.00,0.00,Variable,0.00,0.00,0.00
+916,Travel to provide services,110.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Drug Therapy,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+926,Individually made tray - medicament(s),146.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Anaesthesia and Sedation,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+941,Local Anaesthesia,12.00,0.00,Variable,0.00,0.00,0.00
+"Category: GENERAL
+Subcategory: Anaesthesia and Sedation",,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+942,Sedation - intravenous - per 30 minutes or part thereof,338.00,0.00,Variable,0.00,0.00,0.00
+943,Sedation  - Inhalation  - per 30min or part thereof,144.00,0.00,Variable,0.00,0.00,0.00
+949,Treatment Under General Anaesthesia/Sedation,1867.0,0.00,Variable,0.00,0.00,0.00
+Subcategory: Other,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+1,Toothmousse,33.00,0.00,Variable,0.00,0.00,0.00
+2,Late Cancellation / Fta Fee,50.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Occlusal Therapy,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+963,"Clinical occlusal analysis, including muscle and joint palp",104.00,0.00,Variable,0.00,0.00,0.00
+965,Occlusal Splint,680.00,0.00,Variable,0.00,0.00,0.00
+968,Occlusal Adjustment Following Occlusal Analysis  - per a,116.00,0.00,Variable,0.00,0.00,0.00
+972,Repair/Addition - Occlusal Appliance,241.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Poladay,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+02,Poladay,80.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Superfloss,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+04,Superfloss,6.00,0.00,Variable,0.00,0.00,0.00
+Subcategory: Pikster,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+03,Pikster,7.50,0.00,Variable,0.00,0.00,0.00
+Category: MISCELLANEOUS Subcategory: Miscellaneous,,,,,,,
+Item,Description,Fee,GST (%),Mode,Surcharge %,,
+,,,,,Sat,Sun,PHol
+981,Splinting & Stabilisation  - direct  - per tooth,222.00,0.00,Variable,0.00,0.00,0.00
+982,Enamel Stripping  - per appointment,144.00,0.00,Variable,0.00,0.00,0.00
+984,Bi-Maxillary Oral Appliance for Diagnosed snoring and o,1867.0,0.00,Variable,0.00,0.00,0.00
+986,Post Operative Care not otherwise included,125.00,0.00,Variable,0.00,0.00,0.00
+990,Treatment not otherwise included (specify),208.00,0.00,Variable,0.00,0.00,0.00
+FTA,F T A - Fail To Attend,50.00,0.00,Variable,0.00,0.00,0.00

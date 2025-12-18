@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { FileDown, Eye, EyeOff, Loader2, Upload, Info } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { FileDown, Eye, EyeOff, Loader2, Upload, Info, AlertTriangle, RefreshCw, X } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,12 @@ import { generateTreatmentPlanPdf, downloadPdf } from '@/services/pdfGenerator';
 import { parseTreatmentPlanPdf } from '@/services/pdfParser';
 import { useFeeCalculator } from '@/hooks/useFeeCalculator';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { defaultFeeSchedule } from '@/data/default-fee-schedule';
+import { defaultFeeSchedule, FEE_SCHEDULE_VERSION } from '@/data/default-fee-schedule';
 import type { TreatmentItem, Location, FeeItem, TemplateSettings, TreatmentPlanData } from '@/types';
 import { DEFAULT_TEMPLATE_SETTINGS, LOCATION_TO_TEAM } from '@/types';
+
+// Local storage key for fee schedule version
+const FEE_SCHEDULE_VERSION_KEY = 'dental-fee-schedule-version';
 
 function App() {
   // Patient Info State
@@ -37,10 +40,45 @@ function App() {
   ]);
 
   // Fee Schedule (stored in localStorage)
-  const [feeSchedule] = useLocalStorage<FeeItem[]>(
+  const [feeSchedule, setFeeSchedule] = useLocalStorage<FeeItem[]>(
     'dental-fee-schedule',
     defaultFeeSchedule
   );
+
+  // Track if fee schedule needs update
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+
+  // Check fee schedule version on mount
+  useEffect(() => {
+    const storedVersion = localStorage.getItem(FEE_SCHEDULE_VERSION_KEY);
+    
+    // If no version stored, or version is outdated, show the banner
+    if (!storedVersion || storedVersion !== FEE_SCHEDULE_VERSION) {
+      // Only show banner if there's existing data (user has used the app before)
+      const existingData = localStorage.getItem('dental-fee-schedule');
+      if (existingData) {
+        setShowUpdateBanner(true);
+      } else {
+        // First time user - just set the version
+        localStorage.setItem(FEE_SCHEDULE_VERSION_KEY, FEE_SCHEDULE_VERSION);
+      }
+    }
+  }, []);
+
+  // Handle resetting fee schedule to latest version
+  const handleResetFeeSchedule = useCallback(() => {
+    setFeeSchedule(defaultFeeSchedule);
+    localStorage.setItem(FEE_SCHEDULE_VERSION_KEY, FEE_SCHEDULE_VERSION);
+    setShowUpdateBanner(false);
+    toast.success('Fee schedule updated to the latest version!', {
+      description: `${defaultFeeSchedule.length} item codes loaded with updated descriptions and fees.`,
+    });
+  }, [setFeeSchedule]);
+
+  // Dismiss the banner without updating
+  const handleDismissBanner = useCallback(() => {
+    setShowUpdateBanner(false);
+  }, []);
 
   // Template Settings (stored in localStorage)
   const [templateSettings, setTemplateSettings] = useLocalStorage<TemplateSettings>(
@@ -245,6 +283,48 @@ function App() {
         </div>
       </header>
 
+      {/* Fee Schedule Update Banner */}
+      {showUpdateBanner && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 p-2 bg-amber-100 rounded-full">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-amber-800">
+                    New Item Codes Available!
+                  </p>
+                  <p className="text-sm text-amber-700">
+                    We've updated the fee schedule with new descriptions and prices. Click "Update Now" to get the latest codes.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDismissBanner}
+                  className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Dismiss
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleResetFeeSchedule}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Update Now
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className={`grid gap-8 ${showPreview ? 'lg:grid-cols-2' : ''}`}>
@@ -321,10 +401,26 @@ function App() {
                 {/* Fee Schedule */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Fee Schedule</CardTitle>
-                    <CardDescription>
-                      Item codes and their default descriptions and fees.
-                    </CardDescription>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle>Fee Schedule</CardTitle>
+                        <CardDescription>
+                          Item codes and their default descriptions and fees.
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetFeeSchedule}
+                        className="flex-shrink-0"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset to Default
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Version: {FEE_SCHEDULE_VERSION} • {feeSchedule.length} items
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <div className="max-h-96 overflow-y-auto">
