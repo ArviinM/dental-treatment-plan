@@ -13,12 +13,18 @@ export interface FeeItem {
 }
 
 // Treatment Line Item
+export interface FeeEntry {
+  id: string;
+  quantity: number;
+  unitFee: number;
+}
+
 export interface TreatmentItem {
   id: string;
   itemCode: string;
   description: string;
   tooth: string;
-  fee: number;
+  fees: FeeEntry[];
 }
 
 // Location

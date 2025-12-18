@@ -293,7 +293,7 @@ function parseTreatmentItems(lines: string[]): TreatmentItem[] {
             itemCode,
             tooth,
             description,
-            fee,
+            fees: [{ id: crypto.randomUUID(), quantity: 1, unitFee: fee }],
           });
         }
       }

@@ -3,7 +3,13 @@ import type { TreatmentItem } from '@/types';
 
 export function useFeeCalculator(items: TreatmentItem[]) {
   const totalAmount = useMemo(() => {
-    return items.reduce((sum, item) => sum + (item.fee || 0), 0);
+    return items.reduce((sum, item) => {
+      const itemTotal = (item.fees || []).reduce(
+        (feeSum, fee) => feeSum + (fee.quantity || 0) * (fee.unitFee || 0),
+        0
+      );
+      return sum + itemTotal;
+    }, 0);
   }, [items]);
 
   const itemCount = useMemo(() => {

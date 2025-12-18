@@ -397,13 +397,25 @@ function drawTreatmentPage(
       textY += lineHeight;
     });
 
-    // Qty (centered)
+    // Qty & Unit Fee (centered)
     ctx.textAlign = 'center';
-    ctx.fillText('1', tableX + colWidths.item + colWidths.tooth + colWidths.description + colWidths.qty / 2, currentY + rowHeight / 2);
+    const feeLines: string[] = (item.fees || []).map(f => 
+      (item.fees.length > 1 || f.quantity > 1) 
+        ? `${f.quantity} x $${f.unitFee.toLocaleString()}` 
+        : `${f.quantity}`
+    );
+    const totalFeeLinesHeight = feeLines.length * lineHeight;
+    let feeY = currentY + (rowHeight - totalFeeLinesHeight) / 2 + lineHeight * 0.7;
 
-    // Fee (right-aligned)
+    feeLines.forEach(line => {
+      ctx.fillText(line, tableX + colWidths.item + colWidths.tooth + colWidths.description + colWidths.qty / 2, feeY);
+      feeY += lineHeight;
+    });
+
+    // Row Total Fee (right-aligned)
     ctx.textAlign = 'right';
-    ctx.fillText(`$${item.fee.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`, tableX + tableWidth - 10 * scale, currentY + rowHeight / 2);
+    const itemTotal = (item.fees || []).reduce((sum, f) => sum + f.quantity * f.unitFee, 0);
+    ctx.fillText(`$${itemTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`, tableX + tableWidth - 10 * scale, currentY + rowHeight / 2);
 
     currentY += rowHeight;
   });

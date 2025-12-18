@@ -27,7 +27,13 @@ function App() {
 
   // Treatment Items State
   const [items, setItems] = useState<TreatmentItem[]>([
-    { id: '1', itemCode: '', description: '', tooth: '', fee: 0 },
+    { 
+      id: '1', 
+      itemCode: '', 
+      description: '', 
+      tooth: '', 
+      fees: [{ id: 'f1', quantity: 1, unitFee: 0 }] 
+    },
   ]);
 
   // Fee Schedule (stored in localStorage)

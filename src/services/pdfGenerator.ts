@@ -486,19 +486,30 @@ export async function generateTreatmentPlanPdf({
         textY -= lineHeight;
       });
       
-      // Qty (centered) - show "1" as default
-      const qtyText = '1';
-      const qtyWidth = nunitoRegular.widthOfTextAtSize(qtyText, rowSize);
-      treatmentPage.drawText(qtyText, {
-        x: tableX + colWidths.item + colWidths.tooth + colWidths.description + colWidths.qty / 2 - qtyWidth / 2,
-        y: rowY + rowHeight / 2 - 3,
-        size: rowSize,
-        font: nunitoRegular,
-        color: COLORS.darkGray,
+      // Qty & Unit Fee (centered)
+      const feeLines: string[] = (item.fees || []).map(f => 
+        (item.fees.length > 1 || f.quantity > 1) 
+          ? `${f.quantity} x $${f.unitFee.toLocaleString()}` 
+          : `${f.quantity}`
+      );
+      const totalFeeLinesHeight = feeLines.length * lineHeight;
+      let feeY = rowY + (rowHeight + totalFeeLinesHeight) / 2 - lineHeight + 2;
+
+      feeLines.forEach(line => {
+        const qtyWidth = nunitoRegular.widthOfTextAtSize(line, rowSize);
+        treatmentPage.drawText(line, {
+          x: tableX + colWidths.item + colWidths.tooth + colWidths.description + colWidths.qty / 2 - qtyWidth / 2,
+          y: feeY,
+          size: rowSize,
+          font: nunitoRegular,
+          color: COLORS.darkGray,
+        });
+        feeY -= lineHeight;
       });
       
-      // Fee (right-aligned)
-      const feeText = formatCurrency(item.fee);
+      // Row Total Fee (right-aligned)
+      const itemTotal = (item.fees || []).reduce((sum, f) => sum + f.quantity * f.unitFee, 0);
+      const feeText = formatCurrency(itemTotal);
       const feeWidth = nunitoRegular.widthOfTextAtSize(feeText, rowSize);
       treatmentPage.drawText(feeText, {
         x: tableX + tableWidth - feeWidth - 10,
