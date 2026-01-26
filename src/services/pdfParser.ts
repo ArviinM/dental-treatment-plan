@@ -192,24 +192,20 @@ function parseDate(lines: string[]): string {
 
 // Parse treatment items from table
 // Table structure: Phase | Visit No | Time Min | Item | Times | Description | Tooth | Fee | Amount
+// Example lines:
+// "1 1 118 1 Bleaching, External - per tooth 550.00 550.00"
+// "2 2 532 1 Adhesive restoration - two surfaces - posterior tooth - direct 35 255.00 255.00"
+// "3 119 1 Bleaching, Home Application - per arch 197.50 197.50" (missing visit no)
 function parseTreatmentItems(lines: string[]): TreatmentItem[] {
   const items: TreatmentItem[] = [];
-  const seenItemCodes = new Set<string>();
+  let lastPhase = 1;
+  let lastVisitNo = 1;
+  let pendingDescription = '';
+  let pendingItem: TreatmentItem | null = null;
   
-  // First, find all fee amounts in the document to exclude them from item codes
-  const feeAmounts = new Set<string>();
-  for (const line of lines) {
-    // Match numbers followed by .00 or .XX (fee format)
-    const feeMatches = line.match(/(\d{2,3})\.(?:\d{2})/g);
-    if (feeMatches) {
-      feeMatches.forEach(fee => {
-        const intPart = fee.split('.')[0];
-        feeAmounts.add(intPart);
-      });
-    }
-  }
-  
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
     // Skip header lines and non-data lines
     if (line.includes('Phase') || line.includes('Visit No') || 
         line.includes('Description') || line.includes('NOTE:') || 
@@ -220,87 +216,159 @@ function parseTreatmentItems(lines: string[]): TreatmentItem[] {
         line.includes('Patient Signature') || line.includes('Time left') ||
         line.includes('Initial Estimated') || line.includes('Remaining') ||
         line.includes('Amount for Phase') || line.includes('Quote') ||
-        line.includes('INVOICE') || line.includes('RECEIPT')) {
+        line.includes('INVOICE') || line.includes('RECEIPT') ||
+        line.includes('This treatment plan') || line.includes('next appointment') ||
+        line.includes('Outstanding Status') || line.includes('Total Deposit') ||
+        line.includes('Current') || line.includes('-- ')) {
       continue;
     }
     
-    // Skip address lines (contain street types or postcodes)
-    if (line.match(/\b(Hwy|Highway|Rd|Road|St|Street|Ave|Avenue|Dr|Drive|Ct|Court|Pl|Place)\b/i) ||
+    // Skip address lines
+    if (line.match(/\b(Hwy|Highway|Rd|Road|St|Street|Ave|Avenue|Ct|Court|Pl|Place)\b/i) ||
         line.match(/\b(VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\s*,?\s*\d{4}\b/i) ||
-        line.match(/\d{3,4}\s*[-–]\s*\d{3,4}/)) {  // Skip "138-440" style addresses
+        line.match(/^\d{3,4}\s+(VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\b/i)) {
       continue;
     }
     
-    // Look for treatment row pattern: starts with phase number (1-9), then has item code
-    // Example: "1 532 1 Adhesive restoration..."
-    // The line should contain descriptive text (letters) to be a treatment row
-    if (!line.match(/[a-zA-Z]{3,}/)) {
-      continue; // Skip lines without meaningful text
+    // Check if this is a treatment row by looking for the pattern:
+    // [Phase] [VisitNo] ItemCode Times Description [Tooth] Fee Amount
+    // Item codes are 3-digit numbers (011-999), typically in ranges like 1XX, 2XX, 3XX, etc.
+    
+    // Pattern 1: Full line with Phase and VisitNo
+    // "1 1 118 1 Bleaching, External - per tooth 550.00 550.00"
+    const fullPattern = /^(\d)\s+(\d+)\s+(\d{3})\s+(\d+)\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$/;
+    
+    // Pattern 2: Line with Phase but no VisitNo (or Phase is same as VisitNo)
+    // "3 119 1 Bleaching, Home Application - per arch 197.50 197.50"
+    const shortPattern = /^(\d)\s+(\d{3})\s+(\d+)\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$/;
+    
+    // Pattern 3: Just item code line (continuation or no phase/visit)
+    // "119 1 Bleaching, Home Application - per arch 197.50 197.50"
+    const minimalPattern = /^(\d{3})\s+(\d+)\s+(.+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$/;
+    
+    let match = line.match(fullPattern);
+    if (match) {
+      // Full pattern: Phase VisitNo ItemCode Times Description Fee Amount
+      const [, phase, visitNo, itemCode, times, descPart, fee] = match;
+      lastPhase = parseInt(phase, 10);
+      lastVisitNo = parseInt(visitNo, 10);
+      
+      // Extract tooth number from description if present (2 digits before fee, typically 11-48 or 51-85)
+      const { description, tooth } = extractToothFromDescription(descPart);
+      
+      if (pendingItem) {
+        items.push(pendingItem);
+      }
+      
+      pendingItem = {
+        id: crypto.randomUUID(),
+        phase: lastPhase,
+        visitNo: lastVisitNo,
+        itemCode,
+        times: parseInt(times, 10),
+        description,
+        tooth,
+        fees: [{ id: crypto.randomUUID(), quantity: 1, unitFee: parseFloat(fee) }],
+      };
+      continue;
     }
     
-    // Look for 3-digit item codes in the line
-    // Use a more specific pattern: word boundary, 3 digits, word boundary
-    // But NOT followed by a decimal point (which would make it a fee)
-    const itemCodeMatches = line.match(/\b(\d{3})(?!\.\d)/g);
+    match = line.match(shortPattern);
+    if (match) {
+      // Short pattern: Phase ItemCode Times Description Fee Amount (VisitNo might be implicit)
+      const [, phase, itemCode, times, descPart, fee] = match;
+      lastPhase = parseInt(phase, 10);
+      // Keep last visit number or increment
+      
+      const { description, tooth } = extractToothFromDescription(descPart);
+      
+      if (pendingItem) {
+        items.push(pendingItem);
+      }
+      
+      pendingItem = {
+        id: crypto.randomUUID(),
+        phase: lastPhase,
+        visitNo: lastVisitNo,
+        itemCode,
+        times: parseInt(times, 10),
+        description,
+        tooth,
+        fees: [{ id: crypto.randomUUID(), quantity: 1, unitFee: parseFloat(fee) }],
+      };
+      continue;
+    }
     
-    if (itemCodeMatches) {
-      for (const potentialCode of itemCodeMatches) {
-        // Skip if this looks like a year
-        if (potentialCode.startsWith('20') || potentialCode.startsWith('19')) continue;
-        
-        // Skip if we've already processed this code
-        if (seenItemCodes.has(potentialCode)) continue;
-        
-        // Skip if this is actually a fee amount (appears as XXX.00 elsewhere)
-        if (feeAmounts.has(potentialCode)) continue;
-        
-        // Check if this is a valid dental item code range
-        const codeNum = parseInt(potentialCode, 10);
-        if (codeNum < 11) continue;
-        
-        // Skip numbers that are clearly not item codes (common fee amounts)
-        // Most dental item codes are in ranges: 011-099, 111-199, 211-299, etc.
-        // Fee amounts like 255, 680 are less likely to be item codes
-        
-        const itemCode = potentialCode;
-        
-        // Extract fee - look for decimal numbers
-        const feeMatch = line.match(/(\d+\.\d{2})/);
-        const fee = feeMatch ? parseFloat(feeMatch[1]) : 0;
-        
-        // Extract tooth number - typically 11-48 for permanent teeth, 51-85 for primary
-        const toothMatches = line.match(/\b([1-4][1-8]|[5-8][1-5])\b/g) || [];
-        // Filter out the item code itself and numbers that might be phase/times
-        const tooth = toothMatches.find(t => t !== itemCode && parseInt(t) >= 11) || '';
-        
-        // Extract description - text between numbers
-        let description = line
-          .replace(/\b\d+\.?\d*\b/g, ' ')  // Remove all numbers
-          .replace(/\s+/g, ' ')             // Normalize whitespace
-          .trim();
-        
-        // Clean up description
-        description = description
-          .replace(/^[-–]\s*/, '')
-          .replace(/\s*[-–]\s*$/, '')
-          .trim();
-        
-        // Only add if we have meaningful content
-        if (itemCode && description.length > 3) {
-          seenItemCodes.add(itemCode);
-          items.push({
-            id: crypto.randomUUID(),
-            itemCode,
-            tooth,
-            description,
-            fees: [{ id: crypto.randomUUID(), quantity: 1, unitFee: fee }],
-          });
-        }
+    match = line.match(minimalPattern);
+    if (match) {
+      // Minimal pattern: ItemCode Times Description Fee Amount
+      const [, itemCode, times, descPart, fee] = match;
+      
+      const { description, tooth } = extractToothFromDescription(descPart);
+      
+      if (pendingItem) {
+        items.push(pendingItem);
+      }
+      
+      pendingItem = {
+        id: crypto.randomUUID(),
+        phase: lastPhase,
+        visitNo: lastVisitNo,
+        itemCode,
+        times: parseInt(times, 10),
+        description,
+        tooth,
+        fees: [{ id: crypto.randomUUID(), quantity: 1, unitFee: parseFloat(fee) }],
+      };
+      continue;
+    }
+    
+    // Check if this line is a continuation of a multi-line description
+    // (text only, no item code pattern at start)
+    if (pendingItem && line.match(/^[a-zA-Z]/) && !line.match(/^\d/)) {
+      // This might be a continuation line for the description
+      // Only append if it looks like description text (not an address or other data)
+      if (!line.match(/\b(Phone|Email|VIC|NSW|QLD|SA|WA|TAS|NT|ACT|min|Total|Signature)\b/i)) {
+        pendingItem.description += ' ' + line.replace(/\s+/g, ' ').trim();
       }
     }
   }
   
+  // Don't forget the last item
+  if (pendingItem) {
+    items.push(pendingItem);
+  }
+  
   return items;
+}
+
+// Helper function to extract tooth number from description
+// Tooth numbers are typically 2-digit: 11-48 (permanent teeth) or 51-85 (primary teeth)
+function extractToothFromDescription(descPart: string): { description: string; tooth: string } {
+  // Look for tooth number pattern at the end of description (before where fee would be)
+  // Pattern: description text followed by 2-digit tooth number
+  const toothMatch = descPart.match(/^(.+?)\s+(\d{2})$/);
+  
+  if (toothMatch) {
+    const [, desc, potentialTooth] = toothMatch;
+    const toothNum = parseInt(potentialTooth, 10);
+    
+    // Valid tooth numbers: 11-18, 21-28, 31-38, 41-48 (permanent) or 51-55, 61-65, 71-75, 81-85 (primary)
+    if ((toothNum >= 11 && toothNum <= 48) || (toothNum >= 51 && toothNum <= 85)) {
+      // Verify it's a valid tooth position
+      const ones = toothNum % 10;
+      const tens = Math.floor(toothNum / 10);
+      
+      if (tens >= 1 && tens <= 4 && ones >= 1 && ones <= 8) {
+        return { description: desc.trim(), tooth: potentialTooth };
+      }
+      if (tens >= 5 && tens <= 8 && ones >= 1 && ones <= 5) {
+        return { description: desc.trim(), tooth: potentialTooth };
+      }
+    }
+  }
+  
+  return { description: descPart.trim(), tooth: '' };
 }
 
 // Main parse function

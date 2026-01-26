@@ -1,7 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import type { TreatmentPlanData, TemplateSettings, Team } from '@/types';
-import { LOCATION_TO_TEAM, PDF_PAGE_WIDTH } from '@/types';
+import { LOCATION_TO_TEAM, PDF_PAGE_WIDTH, DEFAULT_TEMPLATE_PATHS } from '@/types';
 
 // SIA Dental Brand Colors
 const COLORS = {
@@ -21,11 +21,36 @@ interface GeneratePdfOptions {
 
 // Fetch PDF from URL
 async function fetchPdf(url: string): Promise<ArrayBuffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch PDF: ${url}`);
+  console.log(`Fetching PDF from: ${url}`);
+  
+  try {
+    const response = await fetch(url);
+    console.log(`Response status for ${url}: ${response.status}, content-type: ${response.headers.get('content-type')}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${url} (status: ${response.status})`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    console.log(`Received ${arrayBuffer.byteLength} bytes from ${url}`);
+    
+    // Validate that this is actually a PDF by checking for the PDF magic bytes (%PDF-)
+    const bytes = new Uint8Array(arrayBuffer);
+    const header = String.fromCharCode(...bytes.slice(0, 5));
+    console.log(`PDF header for ${url}: "${header}"`);
+    
+    if (header !== '%PDF-') {
+      // Log more of the content to help debug
+      const firstChars = String.fromCharCode(...bytes.slice(0, 100));
+      console.error(`Invalid PDF at ${url}. First 100 chars: ${firstChars}`);
+      throw new Error(`Invalid PDF file at ${url}. The file does not appear to be a valid PDF. Header was: "${header}"`);
+    }
+    
+    return arrayBuffer;
+  } catch (error) {
+    console.error(`Error fetching PDF from ${url}:`, error);
+    throw error;
   }
-  return response.arrayBuffer();
 }
 
 // Fetch font file
@@ -154,16 +179,33 @@ export async function generateTreatmentPlanPdf({
   }
 
   // Load the template PDF (contains cover and treatment pages)
-  const templatePdfBytes = await fetchPdf(settings.coverPdf);
-  const templatePdf = await PDFDocument.load(templatePdfBytes);
+  // Use default paths as fallback if settings are incomplete
+  const coverPdfPath = settings.coverPdf || DEFAULT_TEMPLATE_PATHS.coverPdf;
+  let templatePdf;
+  try {
+    console.log('Loading template PDF from:', coverPdfPath);
+    const templatePdfBytes = await fetchPdf(coverPdfPath);
+    templatePdf = await PDFDocument.load(templatePdfBytes);
+  } catch (error) {
+    console.error('Failed to load template PDF:', coverPdfPath, error);
+    throw new Error(`Failed to load template PDF from ${coverPdfPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
   
   // Get team based on location
   const team: Team = LOCATION_TO_TEAM[data.location];
   
-  // Load team PDF
-  const teamPdfPath = settings.teamPdfs[team];
-  const teamPdfBytes = await fetchPdf(teamPdfPath);
-  const teamPdf = await PDFDocument.load(teamPdfBytes);
+  // Load team PDF - use default paths as fallback if settings are incomplete
+  const teamPdfs = settings.teamPdfs || DEFAULT_TEMPLATE_PATHS.teamPdfs;
+  const teamPdfPath = teamPdfs[team] || DEFAULT_TEMPLATE_PATHS.teamPdfs[team];
+  let teamPdf;
+  try {
+    console.log('Loading team PDF from:', teamPdfPath);
+    const teamPdfBytes = await fetchPdf(teamPdfPath);
+    teamPdf = await PDFDocument.load(teamPdfBytes);
+  } catch (error) {
+    console.error('Failed to load team PDF:', teamPdfPath, error);
+    throw new Error(`Failed to load team PDF from ${teamPdfPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 
   // ============ PAGE 1: COVER PAGE ============
   // Copy cover page from template (page 0)
@@ -294,17 +336,20 @@ export async function generateTreatmentPlanPdf({
     const tableWidth = PDF_PAGE_WIDTH - (settings.tableMarginX * 2);
     let currentY = settings.tableStartY;
     
-    // Column widths (proportional) - Item | Tooth | Description | Qty | Fee
+    // Column widths (proportional) - Phase | Visit | Item | Times | Description | Tooth | Fee | Amount
     const colWidths = {
-      item: tableWidth * 0.10,
-      tooth: tableWidth * 0.10,
-      description: tableWidth * 0.50,
-      qty: tableWidth * 0.12,
-      fee: tableWidth * 0.18,
+      phase: tableWidth * 0.06,
+      visit: tableWidth * 0.06,
+      item: tableWidth * 0.08,
+      times: tableWidth * 0.06,
+      description: tableWidth * 0.38,
+      tooth: tableWidth * 0.08,
+      fee: tableWidth * 0.12,
+      amount: tableWidth * 0.16,
     };
     
-    // Draw table header - BIGGER
-    const headerHeight = 45;
+    // Draw table header - more compact
+    const headerHeight = 28;
     treatmentPage.drawRectangle({
       x: tableX,
       y: currentY - headerHeight,
@@ -313,11 +358,29 @@ export async function generateTreatmentPlanPdf({
       color: COLORS.headerBg,
     });
     
-    // Header text - BIGGER
-    const headerY = currentY - 28;
-    const headerSize = 14;
+    // Header text
+    const headerY = currentY - 17;
+    const headerSize = 9;
     
     let headerX = tableX;
+    treatmentPage.drawText('Phase', {
+      x: headerX + colWidths.phase / 2 - nunitoBold.widthOfTextAtSize('Phase', headerSize) / 2,
+      y: headerY,
+      size: headerSize,
+      font: nunitoBold,
+      color: COLORS.white,
+    });
+    
+    headerX += colWidths.phase;
+    treatmentPage.drawText('Visit', {
+      x: headerX + colWidths.visit / 2 - nunitoBold.widthOfTextAtSize('Visit', headerSize) / 2,
+      y: headerY,
+      size: headerSize,
+      font: nunitoBold,
+      color: COLORS.white,
+    });
+    
+    headerX += colWidths.visit;
     treatmentPage.drawText('Item', {
       x: headerX + colWidths.item / 2 - nunitoBold.widthOfTextAtSize('Item', headerSize) / 2,
       y: headerY,
@@ -327,15 +390,15 @@ export async function generateTreatmentPlanPdf({
     });
     
     headerX += colWidths.item;
-    treatmentPage.drawText('Tooth', {
-      x: headerX + colWidths.tooth / 2 - nunitoBold.widthOfTextAtSize('Tooth', headerSize) / 2,
+    treatmentPage.drawText('Times', {
+      x: headerX + colWidths.times / 2 - nunitoBold.widthOfTextAtSize('Times', headerSize) / 2,
       y: headerY,
       size: headerSize,
       font: nunitoBold,
       color: COLORS.white,
     });
     
-    headerX += colWidths.tooth;
+    headerX += colWidths.times;
     treatmentPage.drawText('Description', {
       x: headerX + colWidths.description / 2 - nunitoBold.widthOfTextAtSize('Description', headerSize) / 2,
       y: headerY,
@@ -345,15 +408,15 @@ export async function generateTreatmentPlanPdf({
     });
     
     headerX += colWidths.description;
-    treatmentPage.drawText('Qty', {
-      x: headerX + colWidths.qty / 2 - nunitoBold.widthOfTextAtSize('Qty', headerSize) / 2,
+    treatmentPage.drawText('Tooth', {
+      x: headerX + colWidths.tooth / 2 - nunitoBold.widthOfTextAtSize('Tooth', headerSize) / 2,
       y: headerY,
       size: headerSize,
       font: nunitoBold,
       color: COLORS.white,
     });
     
-    headerX += colWidths.qty;
+    headerX += colWidths.tooth;
     treatmentPage.drawText('Fee', {
       x: headerX + colWidths.fee / 2 - nunitoBold.widthOfTextAtSize('Fee', headerSize) / 2,
       y: headerY,
@@ -362,19 +425,97 @@ export async function generateTreatmentPlanPdf({
       color: COLORS.white,
     });
     
+    headerX += colWidths.fee;
+    treatmentPage.drawText('Amount', {
+      x: headerX + colWidths.amount / 2 - nunitoBold.widthOfTextAtSize('Amount', headerSize) / 2,
+      y: headerY,
+      size: headerSize,
+      font: nunitoBold,
+      color: COLORS.white,
+    });
+    
     currentY -= headerHeight;
     
-    // Draw rows - BIGGER FONTS
-    const rowHeight = settings.rowHeight;
-    const rowSize = 12;
-    const lineHeight = 16;
+    // Draw rows - more compact
+    const rowHeight = 50; // Smaller row height
+    const subtotalRowHeight = 22; // Even smaller for subtotal rows
+    const rowSize = 9;
+    const lineHeight = 11;
+    const borderColor = rgb(0.85, 0.85, 0.85);
     
-    pageItems.forEach((item) => {
+    // Track phase/visit for subtotals
+    let lastPhase = -1;
+    let lastVisit = -1;
+    let visitSubtotal = 0;
+    
+    // Helper function to draw subtotal row
+    const drawSubtotalRow = (phase: number, visit: number, subtotal: number) => {
+      const subRowY = currentY - subtotalRowHeight;
+      
+      // Light gray background
+      treatmentPage.drawRectangle({
+        x: tableX,
+        y: subRowY,
+        width: tableWidth,
+        height: subtotalRowHeight,
+        color: rgb(0.95, 0.96, 0.96),
+      });
+      
+      // Border
+      treatmentPage.drawRectangle({
+        x: tableX,
+        y: subRowY,
+        width: tableWidth,
+        height: subtotalRowHeight,
+        borderColor: borderColor,
+        borderWidth: 1,
+      });
+      
+      // Subtotal text
+      const labelText = `Amount for Phase ${phase}  - Visit ${visit}`;
+      const labelWidth = nunitoBold.widthOfTextAtSize(labelText, 8);
+      treatmentPage.drawText(labelText, {
+        x: tableX + tableWidth - labelWidth - 80,
+        y: subRowY + 7,
+        size: 8,
+        font: nunitoBold,
+        color: COLORS.darkGray,
+      });
+      
+      const subtotalText = subtotal.toFixed(2);
+      const subtotalWidth = nunitoBold.widthOfTextAtSize(subtotalText, 8);
+      treatmentPage.drawText(subtotalText, {
+        x: tableX + tableWidth - subtotalWidth - 6,
+        y: subRowY + 7,
+        size: 8,
+        font: nunitoBold,
+        color: COLORS.darkGray,
+      });
+      
+      currentY -= subtotalRowHeight;
+    };
+    
+    pageItems.forEach((item, index) => {
+      const currentPhase = item.phase || 1;
+      const currentVisit = item.visitNo || 1;
+      
+      // Check if we need to draw a subtotal row for the previous visit
+      if (lastPhase !== -1 && (currentPhase !== lastPhase || currentVisit !== lastVisit)) {
+        drawSubtotalRow(lastPhase, lastVisit, visitSubtotal);
+        visitSubtotal = 0;
+      }
+      
+      lastPhase = currentPhase;
+      lastVisit = currentVisit;
+      
+      // Calculate item total and add to visit subtotal
+      const itemTotal = (item.fees || []).reduce((sum, f) => sum + f.quantity * f.unitFee, 0);
+      visitSubtotal += itemTotal;
+      
       const rowY = currentY - rowHeight;
       
       // Draw cell borders (vertical lines)
       let colX = tableX;
-      const borderColor = rgb(0.85, 0.85, 0.85);
       
       // Left border
       treatmentPage.drawLine({
@@ -385,6 +526,22 @@ export async function generateTreatmentPlanPdf({
       });
       
       // Column separators
+      colX += colWidths.phase;
+      treatmentPage.drawLine({
+        start: { x: colX, y: currentY },
+        end: { x: colX, y: rowY },
+        thickness: 1,
+        color: borderColor,
+      });
+      
+      colX += colWidths.visit;
+      treatmentPage.drawLine({
+        start: { x: colX, y: currentY },
+        end: { x: colX, y: rowY },
+        thickness: 1,
+        color: borderColor,
+      });
+      
       colX += colWidths.item;
       treatmentPage.drawLine({
         start: { x: colX, y: currentY },
@@ -393,7 +550,7 @@ export async function generateTreatmentPlanPdf({
         color: borderColor,
       });
       
-      colX += colWidths.tooth;
+      colX += colWidths.times;
       treatmentPage.drawLine({
         start: { x: colX, y: currentY },
         end: { x: colX, y: rowY },
@@ -409,7 +566,15 @@ export async function generateTreatmentPlanPdf({
         color: borderColor,
       });
       
-      colX += colWidths.qty;
+      colX += colWidths.tooth;
+      treatmentPage.drawLine({
+        start: { x: colX, y: currentY },
+        end: { x: colX, y: rowY },
+        thickness: 1,
+        color: borderColor,
+      });
+      
+      colX += colWidths.fee;
       treatmentPage.drawLine({
         start: { x: colX, y: currentY },
         end: { x: colX, y: rowY },
@@ -433,20 +598,46 @@ export async function generateTreatmentPlanPdf({
         color: borderColor,
       });
       
-      // Item code (centered)
-      const itemWidth = nunitoRegular.widthOfTextAtSize(item.itemCode, rowSize);
-      treatmentPage.drawText(item.itemCode, {
-        x: tableX + colWidths.item / 2 - itemWidth / 2,
+      // Phase (centered)
+      const phaseText = String(item.phase || 1);
+      const phaseWidth = nunitoRegular.widthOfTextAtSize(phaseText, rowSize);
+      treatmentPage.drawText(phaseText, {
+        x: tableX + colWidths.phase / 2 - phaseWidth / 2,
         y: rowY + rowHeight / 2 - 3,
         size: rowSize,
         font: nunitoRegular,
         color: COLORS.darkGray,
       });
       
-      // Tooth (centered)
-      const toothWidth = nunitoRegular.widthOfTextAtSize(item.tooth, rowSize);
-      treatmentPage.drawText(item.tooth, {
-        x: tableX + colWidths.item + colWidths.tooth / 2 - toothWidth / 2,
+      // Visit (centered)
+      let cellX = tableX + colWidths.phase;
+      const visitText = String(item.visitNo || 1);
+      const visitWidth = nunitoRegular.widthOfTextAtSize(visitText, rowSize);
+      treatmentPage.drawText(visitText, {
+        x: cellX + colWidths.visit / 2 - visitWidth / 2,
+        y: rowY + rowHeight / 2 - 3,
+        size: rowSize,
+        font: nunitoRegular,
+        color: COLORS.darkGray,
+      });
+      
+      // Item code (centered)
+      cellX += colWidths.visit;
+      const itemWidth = nunitoRegular.widthOfTextAtSize(item.itemCode, rowSize);
+      treatmentPage.drawText(item.itemCode, {
+        x: cellX + colWidths.item / 2 - itemWidth / 2,
+        y: rowY + rowHeight / 2 - 3,
+        size: rowSize,
+        font: nunitoRegular,
+        color: COLORS.darkGray,
+      });
+      
+      // Times (centered)
+      cellX += colWidths.item;
+      const timesText = String(item.times || 1);
+      const timesWidth = nunitoRegular.widthOfTextAtSize(timesText, rowSize);
+      treatmentPage.drawText(timesText, {
+        x: cellX + colWidths.times / 2 - timesWidth / 2,
         y: rowY + rowHeight / 2 - 3,
         size: rowSize,
         font: nunitoRegular,
@@ -454,8 +645,9 @@ export async function generateTreatmentPlanPdf({
       });
       
       // Description (multi-line text wrapping)
-      const descX = tableX + colWidths.item + colWidths.tooth + 8;
-      const maxDescWidth = colWidths.description - 16;
+      cellX += colWidths.times;
+      const descX = cellX + 4;
+      const maxDescWidth = colWidths.description - 8;
       const words = item.description.split(' ');
       const lines: string[] = [];
       let currentLine = '';
@@ -486,45 +678,52 @@ export async function generateTreatmentPlanPdf({
         textY -= lineHeight;
       });
       
-      // Qty & Unit Fee (centered)
-      const feeLines: string[] = (item.fees || []).map(f => 
-        (item.fees.length > 1 || f.quantity > 1) 
-          ? `${f.quantity} x $${f.unitFee.toLocaleString()}` 
-          : `${f.quantity}`
-      );
-      const totalFeeLinesHeight = feeLines.length * lineHeight;
-      let feeY = rowY + (rowHeight + totalFeeLinesHeight) / 2 - lineHeight + 2;
-
-      feeLines.forEach(line => {
-        const qtyWidth = nunitoRegular.widthOfTextAtSize(line, rowSize);
-        treatmentPage.drawText(line, {
-          x: tableX + colWidths.item + colWidths.tooth + colWidths.description + colWidths.qty / 2 - qtyWidth / 2,
-          y: feeY,
-          size: rowSize,
-          font: nunitoRegular,
-          color: COLORS.darkGray,
-        });
-        feeY -= lineHeight;
-      });
-      
-      // Row Total Fee (right-aligned)
-      const itemTotal = (item.fees || []).reduce((sum, f) => sum + f.quantity * f.unitFee, 0);
-      const feeText = formatCurrency(itemTotal);
-      const feeWidth = nunitoRegular.widthOfTextAtSize(feeText, rowSize);
-      treatmentPage.drawText(feeText, {
-        x: tableX + tableWidth - feeWidth - 10,
+      // Tooth (centered)
+      cellX += colWidths.description;
+      const toothWidth = nunitoRegular.widthOfTextAtSize(item.tooth || '', rowSize);
+      treatmentPage.drawText(item.tooth || '', {
+        x: cellX + colWidths.tooth / 2 - toothWidth / 2,
         y: rowY + rowHeight / 2 - 3,
         size: rowSize,
         font: nunitoRegular,
         color: COLORS.darkGray,
       });
       
+      // Fee (centered) - unit fee from first fee entry
+      cellX += colWidths.tooth;
+      const unitFee = item.fees?.[0]?.unitFee || 0;
+      const feeText = unitFee.toFixed(2);
+      const feeTextWidth = nunitoRegular.widthOfTextAtSize(feeText, rowSize);
+      treatmentPage.drawText(feeText, {
+        x: cellX + colWidths.fee / 2 - feeTextWidth / 2,
+        y: rowY + rowHeight / 2 - 3,
+        size: rowSize,
+        font: nunitoRegular,
+        color: COLORS.darkGray,
+      });
+      
+      // Amount (right-aligned) - total for this item
+      const amountText = itemTotal.toFixed(2);
+      const amountWidth = nunitoBold.widthOfTextAtSize(amountText, rowSize);
+      treatmentPage.drawText(amountText, {
+        x: tableX + tableWidth - amountWidth - 6,
+        y: rowY + rowHeight / 2 - 3,
+        size: rowSize,
+        font: nunitoBold,
+        color: COLORS.darkGray,
+      });
+      
       currentY -= rowHeight;
+      
+      // If this is the last item on this page, draw the final subtotal
+      if (index === pageItems.length - 1) {
+        drawSubtotalRow(currentPhase, currentVisit, visitSubtotal);
+      }
     });
     
-    // Draw total on last page - BIGGER
+    // Draw total on last page
     if (isLastPage) {
-      const totalHeight = 50;
+      const totalHeight = 30;
       const totalY = currentY - totalHeight;
       
       // Total background
@@ -536,11 +735,11 @@ export async function generateTreatmentPlanPdf({
         color: rgb(0.9, 0.9, 0.9),
       });
       
-      // Total label - BIGGER
-      const totalLabelSize = 16;
+      // Total label
+      const totalLabelSize = 10;
       treatmentPage.drawText('TOTAL AMOUNT:', {
-        x: tableX + tableWidth - 220,
-        y: totalY + 15,
+        x: tableX + tableWidth - 160,
+        y: totalY + 10,
         size: totalLabelSize,
         font: nunitoBold,
         color: COLORS.darkGray,
@@ -550,8 +749,8 @@ export async function generateTreatmentPlanPdf({
       const totalText = formatCurrency(data.totalAmount);
       const totalWidth = nunitoBold.widthOfTextAtSize(totalText, totalLabelSize);
       treatmentPage.drawText(totalText, {
-        x: tableX + tableWidth - totalWidth - 10,
-        y: totalY + 15,
+        x: tableX + tableWidth - totalWidth - 6,
+        y: totalY + 10,
         size: totalLabelSize,
         font: nunitoBold,
         color: COLORS.darkGray,

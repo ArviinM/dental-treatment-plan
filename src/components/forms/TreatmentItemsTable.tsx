@@ -21,11 +21,19 @@ export function TreatmentItemsTable({
   const generateId = () => Math.random().toString(36).substring(2, 9);
 
   const addRow = useCallback(() => {
+    // Get the last item's phase and visit for continuity
+    const lastItem = items[items.length - 1];
+    const nextPhase = lastItem?.phase || 1;
+    const nextVisitNo = lastItem?.visitNo || 1;
+    
     onItemsChange([
       ...items,
       { 
         id: generateId(), 
+        phase: nextPhase,
+        visitNo: nextVisitNo,
         itemCode: '', 
+        times: 1,
         description: '', 
         tooth: '', 
         fees: [{ id: generateId(), quantity: 1, unitFee: 0 }] 
@@ -142,7 +150,32 @@ export function TreatmentItemsTable({
               </Button>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            {/* Phase, Visit No, Item Code, Times row */}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phase</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={item.phase || 1}
+                  onChange={(e) =>
+                    updateItem(item.id, 'phase', parseInt(e.target.value) || 1)
+                  }
+                  className="font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visit No</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={item.visitNo || 1}
+                  onChange={(e) =>
+                    updateItem(item.id, 'visitNo', parseInt(e.target.value) || 1)
+                  }
+                  className="font-mono"
+                />
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Item Code</Label>
                 <Input
@@ -155,6 +188,22 @@ export function TreatmentItemsTable({
                   list="item-codes"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Times</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={item.times || 1}
+                  onChange={(e) =>
+                    updateItem(item.id, 'times', parseInt(e.target.value) || 1)
+                  }
+                  className="font-mono"
+                />
+              </div>
+            </div>
+            
+            {/* Tooth / Area row */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tooth / Area</Label>
                 <Input

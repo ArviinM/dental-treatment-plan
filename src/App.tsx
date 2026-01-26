@@ -32,7 +32,10 @@ function App() {
   const [items, setItems] = useState<TreatmentItem[]>([
     { 
       id: '1', 
+      phase: 1,
+      visitNo: 1,
       itemCode: '', 
+      times: 1,
       description: '', 
       tooth: '', 
       fees: [{ id: 'f1', quantity: 1, unitFee: 0 }] 

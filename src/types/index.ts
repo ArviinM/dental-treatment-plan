@@ -22,7 +22,10 @@ export interface FeeEntry {
 
 export interface TreatmentItem {
   id: string;
+  phase: number;      // Phase number (1, 2, 3, etc.)
+  visitNo: number;    // Visit number
   itemCode: string;
+  times: number;      // Times/quantity from source PDF
   description: string;
   tooth: string;
   fees: FeeEntry[];

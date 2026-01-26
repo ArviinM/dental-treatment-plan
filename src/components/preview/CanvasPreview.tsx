@@ -271,47 +271,80 @@ function drawTreatmentPage(
   const tableWidth = width - (tableX * 2);
   let currentY = height - (settings.tableStartY * scale);
 
-  // Column widths - Item | Tooth | Description | Qty | Fee
+  // Column widths - Phase | Visit | Item | Times | Description | Tooth | Fee | Amount
   const colWidths = {
-    item: tableWidth * 0.10,
-    tooth: tableWidth * 0.10,
-    description: tableWidth * 0.50,
-    qty: tableWidth * 0.12,
-    fee: tableWidth * 0.18,
+    phase: tableWidth * 0.06,
+    visit: tableWidth * 0.06,
+    item: tableWidth * 0.08,
+    times: tableWidth * 0.06,
+    description: tableWidth * 0.38,
+    tooth: tableWidth * 0.08,
+    fee: tableWidth * 0.12,
+    amount: tableWidth * 0.16,
   };
 
-  // Draw table header
-  const headerHeight = 45 * scale;
+  // Draw table header - more compact
+  const headerHeight = 28 * scale;
   ctx.fillStyle = '#1f2937';
   ctx.fillRect(tableX, currentY, tableWidth, headerHeight);
 
-  // Header text (centered in each column) - BIGGER
+  // Header text (centered in each column)
   ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${14 * scale}px Nunito, sans-serif`;
+  ctx.font = `bold ${9 * scale}px Nunito, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
   const headerY = currentY + headerHeight / 2;
   let headerX = tableX;
   
+  ctx.fillText('Phase', headerX + colWidths.phase / 2, headerY);
+  headerX += colWidths.phase;
+  ctx.fillText('Visit', headerX + colWidths.visit / 2, headerY);
+  headerX += colWidths.visit;
   ctx.fillText('Item', headerX + colWidths.item / 2, headerY);
   headerX += colWidths.item;
-  ctx.fillText('Tooth', headerX + colWidths.tooth / 2, headerY);
-  headerX += colWidths.tooth;
+  ctx.fillText('Times', headerX + colWidths.times / 2, headerY);
+  headerX += colWidths.times;
   ctx.fillText('Description', headerX + colWidths.description / 2, headerY);
   headerX += colWidths.description;
-  ctx.fillText('Qty', headerX + colWidths.qty / 2, headerY);
-  headerX += colWidths.qty;
+  ctx.fillText('Tooth', headerX + colWidths.tooth / 2, headerY);
+  headerX += colWidths.tooth;
   ctx.fillText('Fee', headerX + colWidths.fee / 2, headerY);
+  headerX += colWidths.fee;
+  ctx.fillText('Amount', headerX + colWidths.amount / 2, headerY);
 
   currentY += headerHeight;
 
-  // Draw rows - BIGGER FONTS
-  const rowHeight = settings.rowHeight * scale;
-  const rowSize = 12 * scale;
-  const lineHeight = 16 * scale;
+  // Draw rows - more compact
+  const rowHeight = 50 * scale; // Smaller row height
+  const subtotalRowHeight = 22 * scale; // Even smaller for subtotal rows
+  const rowSize = 9 * scale;
+  const lineHeight = 11 * scale;
 
-  items.forEach((item) => {
+  // Group items by phase and visit to calculate subtotals
+  let lastPhase = -1;
+  let lastVisit = -1;
+  let visitSubtotal = 0;
+
+  items.forEach((item, index) => {
+    const currentPhase = item.phase || 1;
+    const currentVisit = item.visitNo || 1;
+    
+    // Check if we need to draw a subtotal row for the previous visit
+    if (lastPhase !== -1 && (currentPhase !== lastPhase || currentVisit !== lastVisit)) {
+      // Draw subtotal row for previous visit
+      drawSubtotalRow(ctx, tableX, currentY, tableWidth, subtotalRowHeight, lastPhase, lastVisit, visitSubtotal, scale);
+      currentY += subtotalRowHeight;
+      visitSubtotal = 0;
+    }
+    
+    lastPhase = currentPhase;
+    lastVisit = currentVisit;
+    
+    // Calculate item total and add to visit subtotal
+    const itemTotal = (item.fees || []).reduce((sum, f) => sum + f.quantity * f.unitFee, 0);
+    visitSubtotal += itemTotal;
+
     // Draw cell borders
     ctx.strokeStyle = '#d9d9d9';
     ctx.lineWidth = 1;
@@ -323,13 +356,25 @@ function drawTreatmentPage(
     ctx.stroke();
     
     // Column separators
-    let colX = tableX + colWidths.item;
+    let colX = tableX + colWidths.phase;
     ctx.beginPath();
     ctx.moveTo(colX, currentY);
     ctx.lineTo(colX, currentY + rowHeight);
     ctx.stroke();
     
-    colX += colWidths.tooth;
+    colX += colWidths.visit;
+    ctx.beginPath();
+    ctx.moveTo(colX, currentY);
+    ctx.lineTo(colX, currentY + rowHeight);
+    ctx.stroke();
+    
+    colX += colWidths.item;
+    ctx.beginPath();
+    ctx.moveTo(colX, currentY);
+    ctx.lineTo(colX, currentY + rowHeight);
+    ctx.stroke();
+    
+    colX += colWidths.times;
     ctx.beginPath();
     ctx.moveTo(colX, currentY);
     ctx.lineTo(colX, currentY + rowHeight);
@@ -341,7 +386,13 @@ function drawTreatmentPage(
     ctx.lineTo(colX, currentY + rowHeight);
     ctx.stroke();
     
-    colX += colWidths.qty;
+    colX += colWidths.tooth;
+    ctx.beginPath();
+    ctx.moveTo(colX, currentY);
+    ctx.lineTo(colX, currentY + rowHeight);
+    ctx.stroke();
+    
+    colX += colWidths.fee;
     ctx.beginPath();
     ctx.moveTo(colX, currentY);
     ctx.lineTo(colX, currentY + rowHeight);
@@ -362,17 +413,27 @@ function drawTreatmentPage(
     ctx.font = `${rowSize}px Nunito, sans-serif`;
     ctx.fillStyle = '#1f2937';
 
-    // Item code (centered)
+    // Phase (centered)
     ctx.textAlign = 'center';
-    ctx.fillText(item.itemCode, tableX + colWidths.item / 2, currentY + rowHeight / 2);
+    ctx.fillText(String(item.phase || 1), tableX + colWidths.phase / 2, currentY + rowHeight / 2);
 
-    // Tooth (centered)
-    ctx.fillText(item.tooth || '', tableX + colWidths.item + colWidths.tooth / 2, currentY + rowHeight / 2);
+    // Visit (centered)
+    let cellX = tableX + colWidths.phase;
+    ctx.fillText(String(item.visitNo || 1), cellX + colWidths.visit / 2, currentY + rowHeight / 2);
+
+    // Item code (centered)
+    cellX += colWidths.visit;
+    ctx.fillText(item.itemCode, cellX + colWidths.item / 2, currentY + rowHeight / 2);
+
+    // Times (centered)
+    cellX += colWidths.item;
+    ctx.fillText(String(item.times || 1), cellX + colWidths.times / 2, currentY + rowHeight / 2);
 
     // Description (multi-line, left-aligned)
+    cellX += colWidths.times;
     ctx.textAlign = 'left';
-    const descX = tableX + colWidths.item + colWidths.tooth + 8 * scale;
-    const maxDescWidth = colWidths.description - 16 * scale;
+    const descX = cellX + 4 * scale;
+    const maxDescWidth = colWidths.description - 8 * scale;
     const words = item.description.split(' ');
     const lines: string[] = [];
     let currentLine = '';
@@ -397,43 +458,75 @@ function drawTreatmentPage(
       textY += lineHeight;
     });
 
-    // Qty & Unit Fee (centered)
+    // Tooth (centered)
+    cellX += colWidths.description;
     ctx.textAlign = 'center';
-    const feeLines: string[] = (item.fees || []).map(f => 
-      (item.fees.length > 1 || f.quantity > 1) 
-        ? `${f.quantity} x $${f.unitFee.toLocaleString()}` 
-        : `${f.quantity}`
-    );
-    const totalFeeLinesHeight = feeLines.length * lineHeight;
-    let feeY = currentY + (rowHeight - totalFeeLinesHeight) / 2 + lineHeight * 0.7;
+    ctx.fillText(item.tooth || '', cellX + colWidths.tooth / 2, currentY + rowHeight / 2);
 
-    feeLines.forEach(line => {
-      ctx.fillText(line, tableX + colWidths.item + colWidths.tooth + colWidths.description + colWidths.qty / 2, feeY);
-      feeY += lineHeight;
-    });
+    // Fee (centered) - show unit fee from first fee entry
+    cellX += colWidths.tooth;
+    const unitFee = item.fees?.[0]?.unitFee || 0;
+    ctx.fillText(`${unitFee.toFixed(2)}`, cellX + colWidths.fee / 2, currentY + rowHeight / 2);
 
-    // Row Total Fee (right-aligned)
+    // Amount (right-aligned) - total for this item
     ctx.textAlign = 'right';
-    const itemTotal = (item.fees || []).reduce((sum, f) => sum + f.quantity * f.unitFee, 0);
-    ctx.fillText(`$${itemTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`, tableX + tableWidth - 10 * scale, currentY + rowHeight / 2);
+    ctx.font = `bold ${rowSize}px Nunito, sans-serif`;
+    ctx.fillText(`${itemTotal.toFixed(2)}`, tableX + tableWidth - 6 * scale, currentY + rowHeight / 2);
 
     currentY += rowHeight;
+    
+    // If this is the last item, draw the final subtotal
+    if (index === items.length - 1) {
+      drawSubtotalRow(ctx, tableX, currentY, tableWidth, subtotalRowHeight, currentPhase, currentVisit, visitSubtotal, scale);
+      currentY += subtotalRowHeight;
+    }
   });
 
-  // Draw total - BIGGER
+  // Draw total
   if (showTotal) {
-    const totalHeight = 50 * scale;
+    const totalHeight = 30 * scale;
     ctx.fillStyle = '#e5e7eb';
     ctx.fillRect(tableX, currentY, tableWidth, totalHeight);
 
     ctx.fillStyle = '#1f2937';
-    ctx.font = `bold ${16 * scale}px Nunito, sans-serif`;
+    ctx.font = `bold ${10 * scale}px Nunito, sans-serif`;
     ctx.textAlign = 'right';
     
     const totalY = currentY + totalHeight / 2;
-    ctx.fillText('TOTAL AMOUNT:', tableX + tableWidth - 140 * scale, totalY);
-    ctx.fillText(`$${totalAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`, tableX + tableWidth - 10 * scale, totalY);
+    ctx.fillText('TOTAL AMOUNT:', tableX + tableWidth - 100 * scale, totalY);
+    ctx.fillText(`$${totalAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`, tableX + tableWidth - 6 * scale, totalY);
   }
+}
+
+// Helper function to draw subtotal row
+function drawSubtotalRow(
+  ctx: CanvasRenderingContext2D,
+  tableX: number,
+  currentY: number,
+  tableWidth: number,
+  rowHeight: number,
+  phase: number,
+  visit: number,
+  subtotal: number,
+  scale: number
+) {
+  // Light gray background for subtotal row
+  ctx.fillStyle = '#f3f4f6';
+  ctx.fillRect(tableX, currentY, tableWidth, rowHeight);
+  
+  // Border
+  ctx.strokeStyle = '#d9d9d9';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(tableX, currentY, tableWidth, rowHeight);
+  
+  // Subtotal text
+  ctx.fillStyle = '#1f2937';
+  ctx.font = `bold ${8 * scale}px Nunito, sans-serif`;
+  ctx.textAlign = 'right';
+  
+  const labelText = `Amount for Phase ${phase}  - Visit ${visit}`;
+  ctx.fillText(labelText, tableX + tableWidth - 80 * scale, currentY + rowHeight / 2);
+  ctx.fillText(`${subtotal.toFixed(2)}`, tableX + tableWidth - 6 * scale, currentY + rowHeight / 2);
 }
 
 // Draw team page
