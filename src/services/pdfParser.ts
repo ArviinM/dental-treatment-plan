@@ -200,7 +200,7 @@ function parseTreatmentItems(lines: string[]): TreatmentItem[] {
   const items: TreatmentItem[] = [];
   let lastPhase = 1;
   let lastVisitNo = 1;
-  let pendingDescription = '';
+  // let pendingDescription = '';
   let pendingItem: TreatmentItem | null = null;
   
   for (let i = 0; i < lines.length; i++) {

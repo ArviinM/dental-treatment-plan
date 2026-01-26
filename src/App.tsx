@@ -89,6 +89,19 @@ function App() {
     DEFAULT_TEMPLATE_SETTINGS
   );
 
+  // Handle resetting ALL settings (template + fee schedule)
+  const handleResetAll = useCallback(() => {
+    // Reset template settings
+    setTemplateSettings(DEFAULT_TEMPLATE_SETTINGS);
+    // Reset fee schedule
+    setFeeSchedule(defaultFeeSchedule);
+    localStorage.setItem(FEE_SCHEDULE_VERSION_KEY, FEE_SCHEDULE_VERSION);
+    setShowUpdateBanner(false);
+    toast.success('All settings reset to defaults!', {
+      description: 'Template settings and fee schedule have been restored to their default values.',
+    });
+  }, [setTemplateSettings, setFeeSchedule]);
+
   // Preview toggle
   const [showPreview, setShowPreview] = useState(true);
   
@@ -586,6 +599,7 @@ function App() {
                 <TemplateUploader
                   settings={templateSettings}
                   onSettingsChange={setTemplateSettings}
+                  onResetAll={handleResetAll}
                 />
 
                 {/* Fee Schedule */}
