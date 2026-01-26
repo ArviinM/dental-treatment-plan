@@ -1,16 +1,23 @@
 import { useCallback } from 'react';
-import { Image as ImageIcon, Info } from 'lucide-react';
+import { Image as ImageIcon, Info, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import type { TemplateSettings } from '@/types';
+import { DEFAULT_TEMPLATE_SETTINGS } from '@/types';
 
 interface TemplateUploaderProps {
   settings: TemplateSettings;
   onSettingsChange: (settings: TemplateSettings) => void;
+  onResetAll?: () => void;
 }
 
-export function TemplateUploader({ settings, onSettingsChange }: TemplateUploaderProps) {
+export function TemplateUploader({ settings, onSettingsChange, onResetAll }: TemplateUploaderProps) {
+  const handleResetSettings = useCallback(() => {
+    onSettingsChange(DEFAULT_TEMPLATE_SETTINGS);
+  }, [onSettingsChange]);
+
   const updatePosition = useCallback(
     (field: 'patientNamePosition' | 'doctorNamePosition' | 'doctorPhotoPosition', axis: 'x' | 'y' | 'size', value: number) => {
       onSettingsChange({
@@ -226,6 +233,45 @@ export function TemplateUploader({ settings, onSettingsChange }: TemplateUploade
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Reset to Defaults */}
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <RotateCcw className="h-5 w-5" />
+            Reset to Defaults
+          </CardTitle>
+          <CardDescription>
+            Reset all settings to their default values. This action cannot be undone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              variant="outline"
+              onClick={handleResetSettings}
+              className="flex-1"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset Template Settings
+            </Button>
+            {onResetAll && (
+              <Button
+                variant="destructive"
+                onClick={onResetAll}
+                className="flex-1"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset All (Settings + Item Codes)
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            "Reset Template Settings" resets positioning and table layout.
+            {onResetAll && ' "Reset All" also resets the fee schedule/item codes to the latest version.'}
+          </p>
         </CardContent>
       </Card>
     </div>

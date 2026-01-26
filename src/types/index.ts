@@ -137,11 +137,11 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
   doctorNameFontSize: 34,
   // Doctor photo - circular photo position (bottom-left corner area)
   doctorPhotoPosition: { x: 51, y: 139, size: 109 },
-  // Table settings
+  // Table settings - compact layout for more rows
   tableStartY: 820,      // Start table below the header image
   tableMarginX: 60,      // Left margin
-  rowHeight: 120,        // Height per treatment row (larger for multi-line text)
-  maxRowsPerPage: 5,     // Max rows before overflow
+  rowHeight: 50,         // Compact row height for more items per page
+  maxRowsPerPage: 10,    // More rows per page with compact layout
 };
 
 // Treatment Plan data for generation
