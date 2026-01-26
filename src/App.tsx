@@ -459,7 +459,7 @@ function App() {
                           <div>
                             <h4 className="font-semibold">Add Treatment Items</h4>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Type an item code (e.g., "011", "114", "521") in the Item Code field. The description and fee will auto-fill. Add tooth numbers if needed and adjust quantities.
+                              Set the <strong>Phase</strong> and <strong>Visit No</strong> to organize treatments by appointment. Type an item code (e.g., "011", "114", "521") - the description and fee will auto-fill. Items are grouped with subtotals for each phase/visit.
                             </p>
                           </div>
                         </div>
@@ -528,6 +528,16 @@ function App() {
                             </p>
                           </div>
                         </div>
+
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <FileText className="h-5 w-5 text-sia-teal flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">Phase & Visit Grouping</p>
+                            <p className="text-xs text-muted-foreground">
+                              Use Phase and Visit No to organize treatments by appointment. The PDF will automatically show subtotals for each phase/visit combination.
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -545,14 +555,14 @@ function App() {
                         <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
                           <p className="font-medium text-sm text-amber-800">Item codes not showing or outdated?</p>
                           <p className="text-xs text-amber-700 mt-1">
-                            Go to the <strong>Settings</strong> tab and click <strong>"Reset to Default"</strong> in the Fee Schedule section. This will reload all the latest item codes and fees.
+                            Go to the <strong>Settings</strong> tab and click <strong>"Reset to Default"</strong> in the Fee Schedule section, or use <strong>"Reset All"</strong> to restore everything to defaults.
                           </p>
                         </div>
 
                         <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
-                          <p className="font-medium text-sm text-amber-800">PDF looks different than expected?</p>
+                          <p className="font-medium text-sm text-amber-800">PDF generation failing or settings corrupted?</p>
                           <p className="text-xs text-amber-700 mt-1">
-                            Make sure you have the correct template uploaded in <strong>Settings → Template Images</strong>. You can upload custom templates for Page 1, Team Page, and Continuation pages.
+                            Go to <strong>Settings</strong> and click <strong>"Reset All (Settings + Item Codes)"</strong> to restore all settings to their default values. This fixes most issues.
                           </p>
                         </div>
 
@@ -676,7 +686,7 @@ function App() {
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         A professional, automated tool designed to transform how SIA Dental creates and manages treatment plans. 
                         It moves away from manual data entry toward a smart, "one-click" experience that ensures every patient 
-                        receives a beautiful, consistent, and accurate document.
+                        receives a beautiful, consistent, and accurate document with treatments organized by phase and visit.
                       </p>
                     </div>
 
@@ -726,13 +736,38 @@ function App() {
                           on a digital canvas, ensuring 100% accuracy before you click download.
                         </p>
                       </div>
+
+                      <div className="space-y-2 p-4 rounded-xl bg-muted/30 border border-muted">
+                        <h4 className="font-bold flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sia-teal text-white text-xs">5</span>
+                          Phase & Visit Organization
+                        </h4>
+                        <p className="text-sm text-muted-foreground pl-8">
+                          Treatment items are organized by Phase and Visit numbers, matching the clinic's workflow. 
+                          The table displays: Phase | Visit | Item | Times | Description | Tooth | Fee | Amount, 
+                          with automatic subtotals calculated for each phase/visit combination.
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="pt-4 border-t border-dashed">
+                    <div className="pt-4 border-t border-dashed space-y-4">
                       <blockquote className="italic text-sm text-muted-foreground border-l-4 border-sia-purple pl-4 py-1">
                         "The goal was to turn a manual, time-consuming process into a 10-second task that ensures 
                         every patient gets a consistent, beautiful, and professional treatment plan every single time."
                       </blockquote>
+                      
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p className="font-medium">Table Columns:</p>
+                        <p>Phase | Visit No | Item | Times | Description | Tooth | Fee | Amount</p>
+                        <p className="mt-2 font-medium">Features:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          <li>Import existing treatment plans via PDF</li>
+                          <li>Auto-fill item descriptions and fees from item codes</li>
+                          <li>Organize by Phase and Visit with automatic subtotals</li>
+                          <li>Real-time preview with page navigation</li>
+                          <li>Professional PDF generation with clinic branding</li>
+                        </ul>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
