@@ -146,7 +146,30 @@ function App() {
         settings: templateSettings,
       });
       downloadPdf(pdfBytes, filename);
-      toast.success('PDF generated successfully!');
+
+      const sizeMB = pdfBytes.length / (1024 * 1024);
+      if (sizeMB > 5) {
+        toast.warning(
+          <div>
+            <p className="font-medium">PDF is {sizeMB.toFixed(1)} MB — may be too large to email</p>
+            <p className="text-sm mt-1">
+              Most email providers cap attachments at 5 MB. You can compress it for free at{' '}
+              <a
+                href="https://www.ilovepdf.com/compress_pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline font-medium"
+              >
+                ilovepdf.com
+              </a>
+              {' '}before sending.
+            </p>
+          </div>,
+          { duration: 10000 }
+        );
+      } else {
+        toast.success('PDF generated successfully!');
+      }
     } catch (error) {
       console.error('Failed to generate PDF:', error);
       toast.error('Failed to generate PDF. Please try again.');
