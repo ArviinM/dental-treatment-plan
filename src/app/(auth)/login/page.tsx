@@ -35,7 +35,8 @@ export default async function LoginPage({
           ]}
         />
         <p className="text-center text-sm text-muted-foreground">
-          Ericka sets up accounts. Ask her if you need one, or if you have forgotten your password.
+          Accounts are set up by an admin. Ask one if you need an account, or if you have
+          forgotten your password.
         </p>
       </CardContent>
     </Card>

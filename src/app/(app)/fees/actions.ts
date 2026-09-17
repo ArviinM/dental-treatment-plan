@@ -144,7 +144,10 @@ export async function deleteFeeItem(id: string): Promise<FeeActionResult> {
   // Checked here as well as in RLS. The policy is the real boundary; this just
   // produces a sentence instead of a database error.
   if (!isAdmin(user.role)) {
-    return { ok: false, error: 'Only Ericka can remove an item. You can edit it instead.' };
+    return {
+      ok: false,
+      error: 'Only an admin can remove an item. You can edit it instead.',
+    };
   }
 
   const supabase = await createClient();

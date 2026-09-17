@@ -41,7 +41,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     // Authenticated against GoTrue, but no usable profile — the account was
     // deactivated. Drop the session rather than leave them in limbo.
     await supabase.auth.signOut();
-    return { error: 'That account has been turned off. Ask Ericka to turn it back on.' };
+    return { error: 'That account has been turned off. Ask an admin to turn it back on.' };
   }
 
   revalidatePath('/', 'layout');

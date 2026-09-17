@@ -107,7 +107,7 @@ export function PlanEditor({
     toast.success('Settings reset to defaults', {
       description: canSaveSettings
         ? 'Text positions and table settings are back to how they started.'
-        : 'Reset for you. Ask Ericka to save it for everyone.',
+        : 'Reset for you. Ask an admin to save it for everyone.',
     });
   }, [setTemplateSettings, canSaveSettings]);
 
