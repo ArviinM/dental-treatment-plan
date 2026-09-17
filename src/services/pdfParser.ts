@@ -1,11 +1,33 @@
-import * as pdfjsLib from 'pdfjs-dist';
 import type { Location, TreatmentItem } from '@/types';
 import { getDentistByName } from '@/data/dentists';
 
-// Configure PDF.js worker using the local worker from node_modules
-// This uses Vite's ?url import to get the correct path
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+type PdfJs = typeof import('pdfjs-dist');
+
+let pdfJsPromise: Promise<PdfJs> | null = null;
+
+/**
+ * Loads PDF.js on first use rather than at module scope.
+ *
+ * Importing it eagerly breaks the production build: this module is reachable
+ * from a page Next prerenders, and PDF.js touches browser-only globals
+ * (`DOMMatrix`) the moment it is evaluated. Deferring the import also keeps a
+ * large dependency out of the initial bundle, since importing a plan is an
+ * occasional action rather than something every visit needs.
+ *
+ * The worker is resolved relative to this module — Vite's `?url` import does
+ * not exist under Next, but both Turbopack and webpack understand `new URL`.
+ */
+async function getPdfJs(): Promise<PdfJs> {
+  pdfJsPromise ??= import('pdfjs-dist').then((lib) => {
+    lib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url
+    ).toString();
+    return lib;
+  });
+
+  return pdfJsPromise;
+}
 
 export interface ParsedTreatmentPlan {
   patientName: string;
@@ -30,6 +52,7 @@ export interface ParseResult {
 
 // Extract text content from PDF
 async function extractTextFromPdf(file: File): Promise<string[]> {
+  const pdfjsLib = await getPdfJs();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   
