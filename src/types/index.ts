@@ -118,10 +118,10 @@ export const DEFAULT_TEMPLATE_PATHS = {
   },
 };
 
-// PDF Page dimensions
+// PDF page dimensions now live with the rest of the layout constants, so the
+// renderer and the preview cannot disagree. Re-exported here for existing imports.
 // Original template: 1215 × 2160 px = 11.25 × 20.00 in = 810 × 1440 points
-export const PDF_PAGE_WIDTH = 810;   // 11.25 inches * 72 points/inch
-export const PDF_PAGE_HEIGHT = 1440; // 20.00 inches * 72 points/inch
+export { PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT } from '@/lib/pdf/layout';
 
 // Default template settings
 // Note: PDF coordinates have origin at bottom-left, Y increases upward

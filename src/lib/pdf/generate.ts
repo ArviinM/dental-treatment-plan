@@ -1,17 +1,52 @@
+import 'server-only';
+
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import type { TreatmentPlanData, TemplateSettings, Team } from '@/types';
-import { LOCATION_TO_TEAM, PDF_PAGE_WIDTH, DEFAULT_TEMPLATE_PATHS } from '@/types';
+import { LOCATION_TO_TEAM } from '@/types';
+import { loadFont, loadTemplatePdf, loadTeamPdf } from '@/lib/pdf/assets';
+import {
+  COVER_INTRO,
+  FONT_SIZES,
+  LINE_HEIGHT,
+  METRICS,
+  PALETTE,
+  PDF_PAGE_WIDTH,
+  TEMPLATE_PAGE,
+  resolveColumnWidths,
+  toPdfRgb,
+} from '@/lib/pdf/layout';
 
-// SIA Dental Brand Colors
+/**
+ * Server-side treatment plan renderer.
+ *
+ * Ported from src/services/pdfGenerator.ts, which ran in the browser. The
+ * drawing code is unchanged — only the edges moved:
+ *
+ *  - Fonts and templates are read from disk and cached (src/lib/pdf/assets.ts)
+ *    rather than re-fetched over the network on every download.
+ *  - Measurements come from src/lib/pdf/layout.ts, shared with the canvas
+ *    preview, so the preview cannot drift away from the real document.
+ *  - The dentist photo must arrive ALREADY CROPPED to a circle. The browser
+ *    version cropped it here with a <canvas>, which does not exist on a server;
+ *    the crop now happens in the browser before the request is sent
+ *    (src/lib/image/circle-crop.ts).
+ */
+
+/** pdf-lib wants 0-1 channels; the palette is authored as hex. */
+function color(hex: string) {
+  const { r, g, b } = toPdfRgb(hex);
+  return rgb(r, g, b);
+}
+
 const COLORS = {
-  black: rgb(0, 0, 0),
-  darkGray: rgb(0.12, 0.16, 0.22),      // #1F2937
-  gray: rgb(0.4, 0.4, 0.4),
-  white: rgb(1, 1, 1),
-  siaTeal: rgb(0.17, 0.75, 0.70),       // #2BBFB3
-  siaPurple: rgb(0.65, 0.20, 0.55),     // #A5338D - for patient names
-  headerBg: rgb(0.12, 0.16, 0.22),      // Dark gray for table header
+  black: color(PALETTE.black),
+  darkGray: color(PALETTE.darkGray),
+  gray: color(PALETTE.gray),
+  white: color(PALETTE.white),
+  siaTeal: color(PALETTE.siaTeal),
+  siaPurple: color(PALETTE.siaPurple),
+  headerBg: color(PALETTE.headerBg),
 };
 
 interface GeneratePdfOptions {
@@ -19,135 +54,21 @@ interface GeneratePdfOptions {
   settings: TemplateSettings;
 }
 
-// Fetch PDF from URL
-async function fetchPdf(url: string): Promise<ArrayBuffer> {
-  console.log(`Fetching PDF from: ${url}`);
-  
-  try {
-    const response = await fetch(url);
-    console.log(`Response status for ${url}: ${response.status}, content-type: ${response.headers.get('content-type')}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch PDF: ${url} (status: ${response.status})`);
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    console.log(`Received ${arrayBuffer.byteLength} bytes from ${url}`);
-    
-    // Validate that this is actually a PDF by checking for the PDF magic bytes (%PDF-)
-    const bytes = new Uint8Array(arrayBuffer);
-    const header = String.fromCharCode(...bytes.slice(0, 5));
-    console.log(`PDF header for ${url}: "${header}"`);
-    
-    if (header !== '%PDF-') {
-      // Log more of the content to help debug
-      const firstChars = String.fromCharCode(...bytes.slice(0, 100));
-      console.error(`Invalid PDF at ${url}. First 100 chars: ${firstChars}`);
-      throw new Error(`Invalid PDF file at ${url}. The file does not appear to be a valid PDF. Header was: "${header}"`);
-    }
-    
-    return arrayBuffer;
-  } catch (error) {
-    console.error(`Error fetching PDF from ${url}:`, error);
-    throw error;
-  }
-}
-
-// Fetch font file
-async function fetchFont(url: string): Promise<ArrayBuffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch font: ${url}`);
-  }
-  return response.arrayBuffer();
-}
-
-// Format currency with dollar sign
+/** Money, as it appears on the plan: `$1,234.00`. */
 function formatCurrency(amount: number): string {
-  return `$${amount.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${amount.toLocaleString('en-AU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
-// Fetch image from URL or use base64 and crop to circle
-async function fetchAndCropImage(imageSource: string): Promise<{ bytes: Uint8Array, isPng: boolean }> {
-  let imageBytes: Uint8Array;
-  let isPng: boolean;
-
-  if (imageSource.startsWith('data:')) {
-    isPng = imageSource.includes('image/png');
-    const base64Data = imageSource.split(',')[1];
-    imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-  } else {
-    const response = await fetch(imageSource);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${imageSource}`);
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    imageBytes = new Uint8Array(arrayBuffer);
-    isPng = imageSource.toLowerCase().endsWith('.png');
+/** Decodes a `data:` URL into bytes. Anything else is rejected. */
+function decodeDataUrl(source: string): Uint8Array {
+  const comma = source.indexOf(',');
+  if (!source.startsWith('data:') || comma === -1) {
+    throw new Error('Dentist photo must be a data: URL cropped by the browser.');
   }
-
-  // Crop to circle using Canvas API
-  return new Promise((resolve, reject) => {
-    // Use any cast to bypass SharedArrayBuffer vs ArrayBuffer type issues in some environments
-    const blob = new Blob([imageBytes.buffer as any], { type: isPng ? 'image/png' : 'image/jpeg' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const size = Math.min(img.width, img.height);
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
-      
-      // Create circular clip
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      
-      // Draw image centered and cropped
-      ctx.drawImage(
-        img,
-        (img.width - size) / 2,
-        (img.height - size) / 2,
-        size,
-        size,
-        0,
-        0,
-        size,
-        size
-      );
-      
-      canvas.toBlob((resultBlob) => {
-        if (!resultBlob) {
-          reject(new Error('Failed to create blob from canvas'));
-          return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve({
-            bytes: new Uint8Array(reader.result as ArrayBuffer),
-            isPng: true // Canvas toBlob defaults to PNG or we force it to PNG for transparency
-          });
-        };
-        reader.readAsArrayBuffer(resultBlob);
-      }, 'image/png');
-    };
-    
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image for cropping'));
-    };
-    
-    img.src = url;
-  });
+  return Uint8Array.from(Buffer.from(source.slice(comma + 1), 'base64'));
 }
 
 export async function generateTreatmentPlanPdf({
@@ -166,8 +87,8 @@ export async function generateTreatmentPlanPdf({
   
   try {
     const [regularFontBytes, boldFontBytes] = await Promise.all([
-      fetchFont('/fonts/Nunito-Regular.ttf'),
-      fetchFont('/fonts/Nunito-Bold.ttf'),
+      loadFont('regular'),
+      loadFont('bold'),
     ]);
     nunitoRegular = await pdfDoc.embedFont(regularFontBytes);
     nunitoBold = await pdfDoc.embedFont(boldFontBytes);
@@ -178,50 +99,43 @@ export async function generateTreatmentPlanPdf({
     nunitoBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   }
 
-  // Load the template PDF (contains cover and treatment pages)
-  // Use default paths as fallback if settings are incomplete
-  const coverPdfPath = settings.coverPdf || DEFAULT_TEMPLATE_PATHS.coverPdf;
+  // Load the blank plan template: cover, first treatment page, continuation.
   let templatePdf;
   try {
-    console.log('Loading template PDF from:', coverPdfPath);
-    const templatePdfBytes = await fetchPdf(coverPdfPath);
-    templatePdf = await PDFDocument.load(templatePdfBytes);
+    templatePdf = await PDFDocument.load(await loadTemplatePdf());
   } catch (error) {
-    console.error('Failed to load template PDF:', coverPdfPath, error);
-    throw new Error(`Failed to load template PDF from ${coverPdfPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to load the plan template: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
   
   // Get team based on location
   const team: Team = LOCATION_TO_TEAM[data.location];
   
-  // Load team PDF - use default paths as fallback if settings are incomplete
-  const teamPdfs = settings.teamPdfs || DEFAULT_TEMPLATE_PATHS.teamPdfs;
-  const teamPdfPath = teamPdfs[team] || DEFAULT_TEMPLATE_PATHS.teamPdfs[team];
+  // Load the clinic's team page, appended after the treatment pages.
   let teamPdf;
   try {
-    console.log('Loading team PDF from:', teamPdfPath);
-    const teamPdfBytes = await fetchPdf(teamPdfPath);
-    teamPdf = await PDFDocument.load(teamPdfBytes);
+    teamPdf = await PDFDocument.load(await loadTeamPdf(team));
   } catch (error) {
-    console.error('Failed to load team PDF:', teamPdfPath, error);
-    throw new Error(`Failed to load team PDF from ${teamPdfPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to load the ${team} team page: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 
   // ============ PAGE 1: COVER PAGE ============
   // Copy cover page from template (page 0)
-  const [coverPage] = await pdfDoc.copyPages(templatePdf, [0]);
+  const [coverPage] = await pdfDoc.copyPages(templatePdf, [TEMPLATE_PAGE.cover]);
   pdfDoc.addPage(coverPage);
   
   // Draw intro text above patient name box
-  const introSize = 32;
-  const introLine1 = 'A personalised';
-  const introLine2 = 'treatment plan for:';
+  const introSize = FONT_SIZES.intro;
+  const [introLine1, introLine2] = COVER_INTRO.lines;
   const introLine1Width = nunitoRegular.widthOfTextAtSize(introLine1, introSize);
   const introLine2Width = nunitoRegular.widthOfTextAtSize(introLine2, introSize);
   
   coverPage.drawText(introLine1, {
     x: (PDF_PAGE_WIDTH - introLine1Width) / 2,
-    y: 580, // Position above the name box
+    y: COVER_INTRO.firstLineY,
     size: introSize,
     font: nunitoRegular,
     color: COLORS.darkGray,
@@ -229,7 +143,7 @@ export async function generateTreatmentPlanPdf({
   
   coverPage.drawText(introLine2, {
     x: (PDF_PAGE_WIDTH - introLine2Width) / 2,
-    y: 540, // Below first line
+    y: COVER_INTRO.firstLineY - COVER_INTRO.gap,
     size: introSize,
     font: nunitoRegular,
     color: COLORS.darkGray,
@@ -249,10 +163,8 @@ export async function generateTreatmentPlanPdf({
   // Draw doctor photo if available (using settings for position)
   if (data.doctorPhoto) {
     try {
-      const { bytes: photoBytes } = await fetchAndCropImage(data.doctorPhoto);
-      
-      // Embed as PNG (since fetchAndCropImage returns PNG with transparency)
-      const embeddedImage = await pdfDoc.embedPng(photoBytes);
+      // The browser cropped this to a transparent circular PNG before sending.
+      const embeddedImage = await pdfDoc.embedPng(decodeDataUrl(data.doctorPhoto));
       
       // Photo dimensions and position from settings
       const photoSize = settings.doctorPhotoPosition.size;
@@ -324,7 +236,8 @@ export async function generateTreatmentPlanPdf({
     const isLastPage = pageIndex === itemPages.length - 1;
     
     // Copy treatment page template (page 1 for first, page 2 for continuation)
-    const templatePageIndex = pageIndex === 0 ? 1 : 2;
+    const templatePageIndex =
+      pageIndex === 0 ? TEMPLATE_PAGE.firstTreatment : TEMPLATE_PAGE.continuation;
     const availablePages = templatePdf.getPageCount();
     const sourcePageIndex = Math.min(templatePageIndex, availablePages - 1);
     
@@ -336,20 +249,10 @@ export async function generateTreatmentPlanPdf({
     const tableWidth = PDF_PAGE_WIDTH - (settings.tableMarginX * 2);
     let currentY = settings.tableStartY;
     
-    // Column widths (proportional) - Phase | Visit | Item | Times | Description | Tooth | Fee | Amount
-    const colWidths = {
-      phase: tableWidth * 0.06,
-      visit: tableWidth * 0.06,
-      item: tableWidth * 0.08,
-      times: tableWidth * 0.06,
-      description: tableWidth * 0.38,
-      tooth: tableWidth * 0.08,
-      fee: tableWidth * 0.12,
-      amount: tableWidth * 0.16,
-    };
+    const colWidths = resolveColumnWidths(tableWidth);
     
     // Draw table header - more compact
-    const headerHeight = 28;
+    const headerHeight = METRICS.headerHeight;
     treatmentPage.drawRectangle({
       x: tableX,
       y: currentY - headerHeight,
@@ -360,7 +263,7 @@ export async function generateTreatmentPlanPdf({
     
     // Header text
     const headerY = currentY - 17;
-    const headerSize = 9;
+    const headerSize = FONT_SIZES.tableHeader;
     
     let headerX = tableX;
     treatmentPage.drawText('Phase', {
@@ -437,11 +340,11 @@ export async function generateTreatmentPlanPdf({
     currentY -= headerHeight;
     
     // Draw rows - more compact
-    const rowHeight = 50; // Smaller row height
-    const subtotalRowHeight = 22; // Even smaller for subtotal rows
-    const rowSize = 9;
-    const lineHeight = 11;
-    const borderColor = rgb(0.85, 0.85, 0.85);
+    const rowHeight = METRICS.rowHeight;
+    const subtotalRowHeight = METRICS.subtotalRowHeight;
+    const rowSize = FONT_SIZES.row;
+    const lineHeight = LINE_HEIGHT;
+    const borderColor = color(PALETTE.rowBorder);
     
     // Track phase/visit for subtotals
     let lastPhase = -1;
@@ -458,7 +361,7 @@ export async function generateTreatmentPlanPdf({
         y: subRowY,
         width: tableWidth,
         height: subtotalRowHeight,
-        color: rgb(0.95, 0.96, 0.96),
+        color: color(PALETTE.subtotalBg),
       });
       
       // Border
@@ -723,7 +626,7 @@ export async function generateTreatmentPlanPdf({
     
     // Draw total on last page
     if (isLastPage) {
-      const totalHeight = 30;
+      const totalHeight = METRICS.totalHeight;
       const totalY = currentY - totalHeight;
       
       // Total background
@@ -732,11 +635,11 @@ export async function generateTreatmentPlanPdf({
         y: totalY,
         width: tableWidth,
         height: totalHeight,
-        color: rgb(0.9, 0.9, 0.9),
+        color: color(PALETTE.totalBg),
       });
       
       // Total label
-      const totalLabelSize = 10;
+      const totalLabelSize = FONT_SIZES.total;
       treatmentPage.drawText('TOTAL AMOUNT:', {
         x: tableX + tableWidth - 160,
         y: totalY + 10,
@@ -767,23 +670,5 @@ export async function generateTreatmentPlanPdf({
 
   // Serialize the PDF
   return pdfDoc.save();
-}
-
-// Helper to trigger download
-export function downloadPdf(pdfBytes: Uint8Array, filename: string): void {
-  // Create a new ArrayBuffer copy to avoid SharedArrayBuffer issues
-  const buffer = new ArrayBuffer(pdfBytes.length);
-  const view = new Uint8Array(buffer);
-  view.set(pdfBytes);
-  
-  const blob = new Blob([buffer], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 

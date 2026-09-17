@@ -1,8 +1,23 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { TreatmentPlanData, TemplateSettings, Team } from '@/types';
-import { LOCATION_TO_TEAM, DEFAULT_TEMPLATE_PATHS, PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT } from '@/types';
+import { LOCATION_TO_TEAM, DEFAULT_TEMPLATE_PATHS } from '@/types';
+// Measurements and colours are shared with the server renderer so this preview
+// cannot drift away from the PDF it is previewing. See src/lib/pdf/layout.ts.
+import {
+  COVER_INTRO,
+  FONT_SIZES,
+  LINE_HEIGHT,
+  METRICS,
+  PALETTE,
+  PDF_PAGE_HEIGHT,
+  PDF_PAGE_WIDTH,
+  TABLE_COLUMNS,
+  resolveColumnWidths,
+} from '@/lib/pdf/layout';
 
 interface CanvasPreviewProps {
   data: TreatmentPlanData;
@@ -195,18 +210,18 @@ function drawCoverPage(
   const scale = height / PDF_PAGE_HEIGHT;
 
   // Draw intro text above patient name box
-  ctx.fillStyle = '#1F2937'; // Dark gray
-  ctx.font = `${32 * scale}px Nunito, sans-serif`;
+  ctx.fillStyle = PALETTE.darkGray;
+  ctx.font = `${FONT_SIZES.intro * scale}px Nunito, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
   // Intro text position (above the white box)
-  const introY = height - (580 * scale); // Position above the name box
-  ctx.fillText('A personalised', width / 2, introY);
-  ctx.fillText('treatment plan for:', width / 2, introY + (40 * scale));
+  const introY = height - COVER_INTRO.firstLineY * scale;
+  ctx.fillText(COVER_INTRO.lines[0], width / 2, introY);
+  ctx.fillText(COVER_INTRO.lines[1], width / 2, introY + COVER_INTRO.gap * scale);
 
   // Draw patient name (purple, centered in the white box area) - using font size from settings
-  ctx.fillStyle = '#A5338D'; // SIA Purple
+  ctx.fillStyle = PALETTE.siaPurple;
   ctx.font = `bold ${settings.patientNameFontSize * scale}px Nunito, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -232,7 +247,7 @@ function drawCoverPage(
     ctx.restore();
     
     // Draw circular border
-    ctx.strokeStyle = '#2BBFB3'; // SIA Teal
+    ctx.strokeStyle = PALETTE.siaTeal;
     ctx.lineWidth = 3 * scale;
     ctx.beginPath();
     ctx.arc(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2);
@@ -240,7 +255,7 @@ function drawCoverPage(
   }
 
   // Draw doctor name (black, left aligned) - using font size from settings
-  ctx.fillStyle = '#000000'; // Black
+  ctx.fillStyle = PALETTE.black;
   ctx.font = `800 ${settings.doctorNameFontSize * scale}px Nunito, sans-serif`; // Extra bold
   ctx.textAlign = 'left';
   const doctorNameX = settings.doctorNamePosition.x * scale;
@@ -271,55 +286,34 @@ function drawTreatmentPage(
   const tableWidth = width - (tableX * 2);
   let currentY = height - (settings.tableStartY * scale);
 
-  // Column widths - Phase | Visit | Item | Times | Description | Tooth | Fee | Amount
-  const colWidths = {
-    phase: tableWidth * 0.06,
-    visit: tableWidth * 0.06,
-    item: tableWidth * 0.08,
-    times: tableWidth * 0.06,
-    description: tableWidth * 0.38,
-    tooth: tableWidth * 0.08,
-    fee: tableWidth * 0.12,
-    amount: tableWidth * 0.16,
-  };
+  const colWidths = resolveColumnWidths(tableWidth);
 
   // Draw table header - more compact
-  const headerHeight = 28 * scale;
-  ctx.fillStyle = '#1f2937';
+  const headerHeight = METRICS.headerHeight * scale;
+  ctx.fillStyle = PALETTE.headerBg;
   ctx.fillRect(tableX, currentY, tableWidth, headerHeight);
 
   // Header text (centered in each column)
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${9 * scale}px Nunito, sans-serif`;
+  ctx.fillStyle = PALETTE.white;
+  ctx.font = `bold ${FONT_SIZES.tableHeader * scale}px Nunito, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
   const headerY = currentY + headerHeight / 2;
   let headerX = tableX;
   
-  ctx.fillText('Phase', headerX + colWidths.phase / 2, headerY);
-  headerX += colWidths.phase;
-  ctx.fillText('Visit', headerX + colWidths.visit / 2, headerY);
-  headerX += colWidths.visit;
-  ctx.fillText('Item', headerX + colWidths.item / 2, headerY);
-  headerX += colWidths.item;
-  ctx.fillText('Times', headerX + colWidths.times / 2, headerY);
-  headerX += colWidths.times;
-  ctx.fillText('Description', headerX + colWidths.description / 2, headerY);
-  headerX += colWidths.description;
-  ctx.fillText('Tooth', headerX + colWidths.tooth / 2, headerY);
-  headerX += colWidths.tooth;
-  ctx.fillText('Fee', headerX + colWidths.fee / 2, headerY);
-  headerX += colWidths.fee;
-  ctx.fillText('Amount', headerX + colWidths.amount / 2, headerY);
+  for (const column of TABLE_COLUMNS) {
+    ctx.fillText(column.label, headerX + colWidths[column.key] / 2, headerY);
+    headerX += colWidths[column.key];
+  }
 
   currentY += headerHeight;
 
   // Draw rows - more compact
-  const rowHeight = 50 * scale; // Smaller row height
-  const subtotalRowHeight = 22 * scale; // Even smaller for subtotal rows
-  const rowSize = 9 * scale;
-  const lineHeight = 11 * scale;
+  const rowHeight = METRICS.rowHeight * scale;
+  const subtotalRowHeight = METRICS.subtotalRowHeight * scale;
+  const rowSize = FONT_SIZES.row * scale;
+  const lineHeight = LINE_HEIGHT * scale;
 
   // Group items by phase and visit to calculate subtotals
   let lastPhase = -1;
@@ -346,7 +340,7 @@ function drawTreatmentPage(
     visitSubtotal += itemTotal;
 
     // Draw cell borders
-    ctx.strokeStyle = '#d9d9d9';
+    ctx.strokeStyle = PALETTE.rowBorder;
     ctx.lineWidth = 1;
     
     // Left border
@@ -411,7 +405,7 @@ function drawTreatmentPage(
     ctx.stroke();
 
     ctx.font = `${rowSize}px Nunito, sans-serif`;
-    ctx.fillStyle = '#1f2937';
+    ctx.fillStyle = PALETTE.darkGray;
 
     // Phase (centered)
     ctx.textAlign = 'center';
@@ -485,10 +479,10 @@ function drawTreatmentPage(
   // Draw total
   if (showTotal) {
     const totalHeight = 30 * scale;
-    ctx.fillStyle = '#e5e7eb';
+    ctx.fillStyle = PALETTE.totalBg;
     ctx.fillRect(tableX, currentY, tableWidth, totalHeight);
 
-    ctx.fillStyle = '#1f2937';
+    ctx.fillStyle = PALETTE.darkGray;
     ctx.font = `bold ${10 * scale}px Nunito, sans-serif`;
     ctx.textAlign = 'right';
     
@@ -511,16 +505,16 @@ function drawSubtotalRow(
   scale: number
 ) {
   // Light gray background for subtotal row
-  ctx.fillStyle = '#f3f4f6';
+  ctx.fillStyle = PALETTE.subtotalBg;
   ctx.fillRect(tableX, currentY, tableWidth, rowHeight);
   
   // Border
-  ctx.strokeStyle = '#d9d9d9';
+  ctx.strokeStyle = PALETTE.rowBorder;
   ctx.lineWidth = 1;
   ctx.strokeRect(tableX, currentY, tableWidth, rowHeight);
   
   // Subtotal text
-  ctx.fillStyle = '#1f2937';
+  ctx.fillStyle = PALETTE.darkGray;
   ctx.font = `bold ${8 * scale}px Nunito, sans-serif`;
   ctx.textAlign = 'right';
   
@@ -540,4 +534,3 @@ function drawTeamPage(
     ctx.drawImage(bgImage, 0, 0, width, height);
   }
 }
-

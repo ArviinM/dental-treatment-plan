@@ -1,3 +1,5 @@
+'use client';
+
 import { useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,9 +13,11 @@ import {
 } from '@/components/ui/select';
 import type { Location } from '@/types';
 import { LOCATIONS } from '@/types';
-import { DENTISTS } from '@/data/dentists';
+import type { Dentist } from '@/data/dentists';
 
 interface PatientInfoFormProps {
+  /** The dentist list, from the database. Was a hardcoded import until Phase 3. */
+  dentists: Dentist[];
   patientName: string;
   doctorName: string;
   doctorPhoto: string | null;
@@ -27,6 +31,7 @@ interface PatientInfoFormProps {
 }
 
 export function PatientInfoForm({
+  dentists,
   patientName,
   doctorName,
   doctorPhoto,
@@ -59,7 +64,7 @@ export function PatientInfoForm({
   };
 
   const handleDoctorSelect = (dentistId: string) => {
-    const dentist = DENTISTS.find(d => d.id === dentistId);
+    const dentist = dentists.find(d => d.id === dentistId);
     if (dentist) {
       onDoctorNameChange(dentist.name);
       onDoctorPhotoChange(dentist.photoUrl);
@@ -89,14 +94,14 @@ export function PatientInfoForm({
       <div className="space-y-2">
         <Label htmlFor="doctorName">Doctor / Dentist Name</Label>
         <Select 
-          value={DENTISTS.find(d => d.name === doctorName)?.id || 'custom'} 
+          value={dentists.find(d => d.name === doctorName)?.id || 'custom'} 
           onValueChange={handleDoctorSelect}
         >
           <SelectTrigger id="doctorName">
             <SelectValue placeholder="Select dentist" />
           </SelectTrigger>
           <SelectContent>
-            {DENTISTS.map((dentist) => (
+            {dentists.map((dentist) => (
               <SelectItem key={dentist.id} value={dentist.id}>
                 <div className="flex items-center gap-2">
                   <img 
@@ -111,7 +116,7 @@ export function PatientInfoForm({
             <SelectItem value="custom">Custom / Other</SelectItem>
           </SelectContent>
         </Select>
-        {(!DENTISTS.some(d => d.name === doctorName) || doctorName === '') && (
+        {(!dentists.some(d => d.name === doctorName) || doctorName === '') && (
           <Input
             value={doctorName}
             onChange={(e) => onDoctorNameChange(e.target.value)}
@@ -195,4 +200,3 @@ export function PatientInfoForm({
     </div>
   );
 }
-

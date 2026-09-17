@@ -1,6 +1,20 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { FileDown, Eye, EyeOff, Loader2, Upload, Info, AlertTriangle, RefreshCw, X, BookOpen, MousePointerClick, Search, Settings, Download, FileText } from 'lucide-react';
-import { Toaster, toast } from 'sonner';
+'use client';
+
+/**
+ * The original single-page generator, lifted out of App.tsx unchanged.
+ *
+ * This screen is FROZEN. Ericka's team has habits built around it, so its
+ * layout, tabs, preview and buttons stay exactly as they are. New capability
+ * belongs on new pages (/plans/new), never in here.
+ *
+ * Two things were adjusted when it moved under the dashboard shell, both to
+ * avoid rendering twice: the brand block (the nav shows it now) and the
+ * <Toaster> (the root layout owns it).
+ */
+
+import { useState, useMemo, useCallback, useRef } from 'react';
+import { FileDown, Eye, EyeOff, Loader2, Upload, Info, AlertTriangle, BookOpen, MousePointerClick, Search, Settings, Download, FileText , Pencil } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,18 +23,35 @@ import { PatientInfoForm } from '@/components/forms/PatientInfoForm';
 import { TreatmentItemsTable } from '@/components/forms/TreatmentItemsTable';
 import { CanvasPreview } from '@/components/preview/CanvasPreview';
 import { TemplateUploader } from '@/components/settings/TemplateUploader';
-import { generateTreatmentPlanPdf, downloadPdf } from '@/services/pdfGenerator';
+import { renderTreatmentPlanPdf, downloadPdf } from '@/lib/pdf/client';
 import { parseTreatmentPlanPdf } from '@/services/pdfParser';
 import { useFeeCalculator } from '@/hooks/useFeeCalculator';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { defaultFeeSchedule, FEE_SCHEDULE_VERSION } from '@/data/default-fee-schedule';
+import { saveTemplateSettings } from '@/app/(app)/admin/templates/actions';
+import type { Dentist } from '@/data/dentists';
 import type { TreatmentItem, Location, FeeItem, TemplateSettings, TreatmentPlanData } from '@/types';
 import { DEFAULT_TEMPLATE_SETTINGS, LOCATION_TO_TEAM } from '@/types';
 
-// Local storage key for fee schedule version
-const FEE_SCHEDULE_VERSION_KEY = 'dental-fee-schedule-version';
+type PlanEditorProps = {
+  /** The shared fee schedule. Was a bundled array until Phase 3. */
+  feeSchedule: FeeItem[];
+  /** The dentist directory. Was src/data/dentists.ts until Phase 3. */
+  dentists: Dentist[];
+  /** Shared text positions and table metrics, from the database. */
+  initialTemplateSettings: TemplateSettings;
+  /**
+   * Whether this person may save Settings for everyone. These used to live in
+   * each browser's localStorage; shared, one person's tweak would change every
+   * plan, so persisting is admin-only. Staff can still adjust and preview.
+   */
+  canSaveSettings: boolean;
+};
 
-function App() {
+export function PlanEditor({
+  feeSchedule,
+  dentists,
+  initialTemplateSettings,
+  canSaveSettings,
+}: PlanEditorProps) {
   // Patient Info State
   const [patientName, setPatientName] = useState('');
   const [doctorName, setDoctorName] = useState('');
@@ -42,65 +73,43 @@ function App() {
     },
   ]);
 
-  // Fee Schedule (stored in localStorage)
-  const [feeSchedule, setFeeSchedule] = useLocalStorage<FeeItem[]>(
-    'dental-fee-schedule',
-    defaultFeeSchedule
+  // The "your fee schedule is out of date" banner is gone: there is one shared
+  // schedule now, so a per-browser copy can no longer fall behind.
+
+  // Template settings: seeded from the database, edited locally so the preview
+  // stays instant, and written back only by someone allowed to.
+  const [templateSettings, setTemplateSettingsState] =
+    useState<TemplateSettings>(initialTemplateSettings);
+
+  // These are number inputs, so a change fires on every keystroke. Saving each
+  // one would mean a round trip to Sydney per digit and a history entry per
+  // digit too, so the write is debounced until typing stops.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setTemplateSettings = useCallback(
+    (next: TemplateSettings) => {
+      // The preview moves immediately; only persistence waits.
+      setTemplateSettingsState(next);
+      if (!canSaveSettings) return;
+
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        void saveTemplateSettings(next).then((result) => {
+          if (!result.ok) toast.error(result.error ?? 'Could not save those settings.');
+        });
+      }, 800);
+    },
+    [canSaveSettings]
   );
 
-  // Track if fee schedule needs update
-  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
-
-  // Check fee schedule version on mount
-  useEffect(() => {
-    const storedVersion = localStorage.getItem(FEE_SCHEDULE_VERSION_KEY);
-    
-    // If no version stored, or version is outdated, show the banner
-    if (!storedVersion || storedVersion !== FEE_SCHEDULE_VERSION) {
-      // Only show banner if there's existing data (user has used the app before)
-      const existingData = localStorage.getItem('dental-fee-schedule');
-      if (existingData) {
-        setShowUpdateBanner(true);
-      } else {
-        // First time user - just set the version
-        localStorage.setItem(FEE_SCHEDULE_VERSION_KEY, FEE_SCHEDULE_VERSION);
-      }
-    }
-  }, []);
-
-  // Handle resetting fee schedule to latest version
-  const handleResetFeeSchedule = useCallback(() => {
-    setFeeSchedule(defaultFeeSchedule);
-    localStorage.setItem(FEE_SCHEDULE_VERSION_KEY, FEE_SCHEDULE_VERSION);
-    setShowUpdateBanner(false);
-    toast.success('Fee schedule updated to the latest version!', {
-      description: `${defaultFeeSchedule.length} item codes loaded with updated descriptions and fees.`,
-    });
-  }, [setFeeSchedule]);
-
-  // Dismiss the banner without updating
-  const handleDismissBanner = useCallback(() => {
-    setShowUpdateBanner(false);
-  }, []);
-
-  // Template Settings (stored in localStorage)
-  const [templateSettings, setTemplateSettings] = useLocalStorage<TemplateSettings>(
-    'dental-template-settings-v2',
-    DEFAULT_TEMPLATE_SETTINGS
-  );
-
-  // Handle resetting ALL settings (template + fee schedule)
   const handleResetAll = useCallback(() => {
-    // Reset template settings
     setTemplateSettings(DEFAULT_TEMPLATE_SETTINGS);
-    // Reset fee schedule
-    setFeeSchedule(defaultFeeSchedule);
-    localStorage.setItem(FEE_SCHEDULE_VERSION_KEY, FEE_SCHEDULE_VERSION);
-    setShowUpdateBanner(false);
-    toast.success('All settings reset to defaults!', {
-      description: 'Template settings and fee schedule have been restored to their default values.',
+    toast.success('Settings reset to defaults', {
+      description: canSaveSettings
+        ? 'Text positions and table settings are back to how they started.'
+        : 'Reset for you. Ask Ericka to save it for everyone.',
     });
-  }, [setTemplateSettings, setFeeSchedule]);
+  }, [setTemplateSettings, canSaveSettings]);
 
   // Preview toggle
   const [showPreview, setShowPreview] = useState(true);
@@ -141,10 +150,7 @@ function App() {
   const handleDownloadPdf = useCallback(async () => {
     setIsGenerating(true);
     try {
-      const pdfBytes = await generateTreatmentPlanPdf({
-        data: treatmentPlanData,
-        settings: templateSettings,
-      });
+      const pdfBytes = await renderTreatmentPlanPdf(treatmentPlanData, templateSettings);
       downloadPdf(pdfBytes, filename);
 
       const sizeMB = pdfBytes.length / (1024 * 1024);
@@ -172,7 +178,9 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to generate PDF:', error);
-      toast.error('Failed to generate PDF. Please try again.');
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to generate PDF. Please try again.'
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -241,28 +249,20 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2BBFB3]/5 via-white to-[#A5338D]/5">
+    <>
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-14 lg:top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img 
-                src="/brand/logo-favicon.png" 
-                alt="SIA Dental" 
-                className="h-10 w-10"
-              />
-      <div>
-                <h1 className="text-2xl font-bold">
-                  <span className="text-sia-teal">SIA</span>
-                  <span className="text-sia-purple">Dental</span>
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Treatment Plan Generator
-        </p>
-      </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              {/* Same wording as the sidebar and the home page. One action,
+                  one name, the whole way through. */}
+              <h1 className="text-2xl font-bold text-sia-dark">Make a plan</h1>
+              <p className="text-sm text-muted-foreground">
+                Fill in the patient and treatment details, then download the PDF.
+              </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {/* Hidden file input for PDF import */}
               <input
                 type="file"
@@ -322,47 +322,8 @@ function App() {
         </div>
       </header>
 
-      {/* Fee Schedule Update Banner */}
-      {showUpdateBanner && (
-        <div className="bg-amber-50 border-b border-amber-200">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 p-2 bg-amber-100 rounded-full">
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-amber-800">
-                    New Item Codes Available!
-                  </p>
-                  <p className="text-sm text-amber-700">
-                    We've updated the fee schedule with new descriptions and prices. Click "Update Now" to get the latest codes.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDismissBanner}
-                  className="text-amber-700 border-amber-300 hover:bg-amber-100"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Dismiss
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleResetFeeSchedule}
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Update Now
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* The fee-schedule update banner is gone: one shared schedule means a
+          per-browser copy can no longer fall behind. */}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -388,6 +349,7 @@ function App() {
                   </CardHeader>
                   <CardContent>
                     <PatientInfoForm
+                  dentists={dentists}
                       patientName={patientName}
                       doctorName={doctorName}
                       doctorPhoto={doctorPhoto}
@@ -645,18 +607,15 @@ function App() {
                           Item codes and their default descriptions and fees.
                         </CardDescription>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleResetFeeSchedule}
-                        className="flex-shrink-0"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reset to Default
+                      <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                        <a href="/fees">
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit fees
+                        </a>
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Version: {FEE_SCHEDULE_VERSION} • {feeSchedule.length} items
+                      {feeSchedule.length} items · shared with everyone
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -827,19 +786,6 @@ function App() {
         </div>
       </footer>
 
-      {/* Toast notifications */}
-      <Toaster 
-        position="top-right" 
-        richColors 
-        closeButton
-        toastOptions={{
-          style: {
-            fontFamily: 'Nunito, sans-serif',
-          },
-        }}
-      />
-    </div>
+    </>
   );
 }
-
-export default App;

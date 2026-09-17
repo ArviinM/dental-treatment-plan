@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback } from 'react';
 import { Image as ImageIcon, Info, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
