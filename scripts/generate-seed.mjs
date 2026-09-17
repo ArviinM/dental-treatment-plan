@@ -79,8 +79,9 @@ say(`${clinicRows.join(',\n')}\non conflict (slug) do nothing;`);
 say();
 
 // --- staff ------------------------------------------------------------------
-say('-- Dentists (from src/data/dentists.ts). Photos are migrated separately, so');
-say('-- these rows carry no photo_path until the files are uploaded to storage.');
+say('-- Dentists (from src/data/dentists.ts). SQL cannot carry binary files, so');
+say('-- photo_path is left null here and filled in by the other half of this');
+say('-- migration: node scripts/migrate-staff-photos.mjs --apply');
 say('insert into public.staff_members (slug, full_name, is_dentist, sort_order) values');
 const staffRows = DENTISTS.map((d, i) => `  (${sql(d.id)}, ${sql(d.name)}, true, ${i})`);
 say(`${staffRows.join(',\n')}\non conflict (slug) do nothing;`);

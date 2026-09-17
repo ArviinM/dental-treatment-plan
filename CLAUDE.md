@@ -84,6 +84,11 @@ whichever screen produced it — keep it that way.
 
 **The dentist photo must be cropped before it reaches the server.** There is no `<canvas>` on the server; `lib/image/circle-crop.ts` does it in the browser and `generate.ts` expects a ready circular PNG data URL.
 
+**Dentist photos live in Supabase Storage**, not in `public/`. `seed.sql` cannot
+carry binary files, so `scripts/migrate-staff-photos.mjs --apply` is the other
+half of that migration — it is idempotent and skips anyone who already has a
+photo. The copies still in `public/dentist-photos/` are unused by the app.
+
 **Team pages are static PDFs** with staff baked into the artwork. Changing `data/dentists.ts` does **not** update them. Expect the directory and the team page to disagree.
 
 **`pdfjs-dist` must stay lazily imported.** It touches `DOMMatrix` at module scope, which breaks the production build when a prerendered page can reach it. See `getPdfJs()` in `services/pdfParser.ts`.

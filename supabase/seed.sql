@@ -17,8 +17,9 @@ insert into public.clinics (slug, name, website, phone, address, sort_order) val
   ('mulgrave', 'Mulgrave', 'siadentalmulgrave.com.au', '(03) 9289 3999', 'Level 1, 372 Wellington Rd, Mulgrave, VIC 3170', 2)
 on conflict (slug) do nothing;
 
--- Dentists (from src/data/dentists.ts). Photos are migrated separately, so
--- these rows carry no photo_path until the files are uploaded to storage.
+-- Dentists (from src/data/dentists.ts). SQL cannot carry binary files, so
+-- photo_path is left null here and filled in by the other half of this
+-- migration: node scripts/migrate-staff-photos.mjs --apply
 insert into public.staff_members (slug, full_name, is_dentist, sort_order) values
   ('dr-siv-lengsavath', 'Dr Siv Lengsavath', true, 0),
   ('dr-adina-low', 'Dr Adina Low', true, 1),
