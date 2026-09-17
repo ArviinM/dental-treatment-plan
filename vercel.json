@@ -1,9 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-
-  "//": "The project was created as a Vite app, so its saved settings still look for a `dist` directory. Next.js outputs `.next`. Declaring the framework here overrides that, and keeps the answer in the repo rather than in dashboard settings nobody can see in a diff.",
   "framework": "nextjs",
-
-  "//regions": "Supabase is in ap-southeast-2 and the clinics are in Melbourne. A US region would cross the Pacific twice per query.",
   "regions": ["syd1"]
 }
