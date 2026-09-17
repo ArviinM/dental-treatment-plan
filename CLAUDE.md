@@ -72,9 +72,6 @@ All six phases are built. `/legacy` is the frozen original builder (labelled
 you go. Both render through `/api/plans/render`, so output is identical
 whichever screen produced it — keep it that way.
 
-Remaining known gaps: the purge job (`purge_expired_records()`) still needs
-scheduling, and there are no automated tests.
-
 ## Gotchas
 
 **PDF coordinates are bottom-left origin; canvas is top-left.** `CanvasPreview.tsx` converts with `height - (y * scale)`. Getting it backwards silently puts text off-page. Every position in `DEFAULT_TEMPLATE_SETTINGS` is PDF points from the bottom.
@@ -93,7 +90,15 @@ scheduling, and there are no automated tests.
 
 **Generated PDFs often exceed 5 MB**, over most email attachment limits. The weight is in the template assets — `public/templates` alone is 28 MB — not the drawn content.
 
-**There are no tests.** Verify by generating a real PDF. Use a plan long enough to paginate (>10 items) and spanning multiple phases/visits, so pagination and subtotal rows are exercised. `POST /api/plans/render` can be driven directly with curl.
+**Tests: `yarn test` (unit, safe) and `yarn test:integration` (REAL DATABASE).**
+The integration suite creates and deletes real auth users and rows in the live
+Supabase project. Everything it makes is tagged `zz-autotest` and removed in
+afterAll, and it never deletes a row it did not create — but do not run it once
+real patient records exist. Assertions are always made with a signed-in user's
+client, never the service role: a service-role assertion passes no matter how
+broken the policies are.
+
+Also verify PDF changes by generating a real one. Use a plan long enough to paginate (>10 items) and spanning multiple phases/visits, so pagination and subtotal rows are exercised. `POST /api/plans/render` can be driven directly with curl.
 
 **Lint is scoped, deliberately.** `eslint.config.mjs` downgrades some rules for the frozen legacy surface so working code is not churned to satisfy a linter. New code must satisfy them as errors — do not widen that list.
 

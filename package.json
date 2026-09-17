@@ -14,7 +14,12 @@
     "db:lint": "./scripts/with-env.sh npx supabase db lint --linked",
     "db:types": "./scripts/with-env.sh sh -c 'npx supabase gen types typescript --linked > src/lib/database.types.ts'",
     "db:whoami": "./scripts/with-env.sh npx supabase projects list",
-    "db:seed": "./scripts/with-env.sh npx supabase db query --linked --file supabase/seed.sql"
+    "db:seed": "./scripts/with-env.sh npx supabase db query --linked --file supabase/seed.sql",
+    "test": "vitest run tests/unit",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:all": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -46,9 +51,13 @@
     "@types/papaparse": "^5.5.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^5.0.1",
+    "dotenv": "^17.4.2",
     "eslint": "^9.39.1",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }

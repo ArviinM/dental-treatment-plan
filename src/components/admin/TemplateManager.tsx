@@ -1,11 +1,10 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { FileText, History, Loader2, Upload } from 'lucide-react';
+import { FileText, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { restoreTemplate, uploadTemplate } from '@/app/(app)/admin/templates/upload-actions';
 
 export type TemplateVersion = {
@@ -32,15 +31,23 @@ function when(iso: string): string {
 
 export function TemplateManager({ slots }: { slots: TemplateSlot[] }) {
   return (
-    <div className="space-y-4">
+    <ul className="divide-y rounded-lg border bg-white">
       {slots.map((slot) => (
-        <SlotCard key={`${slot.kind}:${slot.clinicSlug ?? 'shared'}`} slot={slot} />
+        <SlotRow key={`${slot.kind}:${slot.clinicSlug ?? 'shared'}`} slot={slot} />
       ))}
-    </div>
+    </ul>
   );
 }
 
-function SlotCard({ slot }: { slot: TemplateSlot }) {
+/**
+ * One row per template.
+ *
+ * These were cards, which gave four lines of information a whole screen. A row
+ * says the same thing: what it is, whether it has been replaced, and how to
+ * replace it. Version history stays collapsed until asked for, because most of
+ * the time there is none.
+ */
+function SlotRow({ slot }: { slot: TemplateSlot }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [showHistory, setShowHistory] = useState(false);
@@ -66,76 +73,66 @@ function SlotCard({ slot }: { slot: TemplateSlot }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base">{slot.label}</CardTitle>
-            <CardDescription>{slot.description}</CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              type="file"
-              accept="application/pdf"
-              onChange={onFile}
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pending}
-              onClick={() => inputRef.current?.click()}
-            >
-              {pending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" /> Replace
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
+    <li className="px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <FileText className="h-4 w-4 shrink-0 text-slate-300" aria-hidden />
 
-      <CardContent className="space-y-3">
-        <p className="flex items-center gap-2 text-sm text-slate-500">
-          <FileText className="h-4 w-4 text-slate-400" aria-hidden />
-          {current
-            ? `Uploaded ${when(current.createdAt)}`
-            : 'Using the original design that shipped with the app.'}
-        </p>
-
-        {older.length > 0 && (
-          <div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowHistory((v) => !v)}
-            >
-              <History className="mr-2 h-4 w-4" />
-              {showHistory ? 'Hide' : `${older.length} earlier ${older.length === 1 ? 'version' : 'versions'}`}
-            </Button>
-
-            {showHistory && (
-              <ul className="mt-2 space-y-1 border-t pt-2">
-                {older.map((version) => (
-                  <li key={version.id} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="text-slate-500">Uploaded {when(version.createdAt)}</span>
-                    <RestoreButton id={version.id} label={slot.label} />
-                  </li>
-                ))}
-              </ul>
+        <div className="min-w-48 flex-1">
+          <p className="font-medium text-sia-dark">{slot.label}</p>
+          <p className="text-sm text-slate-500">
+            {current ? `Replaced ${when(current.createdAt)}` : 'Original design'}
+            {older.length > 0 && (
+              <>
+                {' · '}
+                <button
+                  type="button"
+                  onClick={() => setShowHistory((v) => !v)}
+                  className="underline hover:text-sia-dark"
+                >
+                  {showHistory ? 'hide' : `${older.length} earlier`}
+                </button>
+              </>
             )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          </p>
+        </div>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/pdf"
+          onChange={onFile}
+          className="hidden"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          onClick={() => inputRef.current?.click()}
+        >
+          {pending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" /> Replace
+            </>
+          )}
+        </Button>
+      </div>
+
+      {showHistory && older.length > 0 && (
+        <ul className="mt-2 space-y-1 border-t pt-2 pl-8">
+          {older.map((version) => (
+            <li key={version.id} className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-slate-500">Uploaded {when(version.createdAt)}</span>
+              <RestoreButton id={version.id} label={slot.label} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 

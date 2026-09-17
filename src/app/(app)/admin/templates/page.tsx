@@ -37,7 +37,8 @@ export default async function TemplatesPage() {
       kind: 'team' as const,
       clinicSlug: clinic.slug,
       label: `${clinic.name} team page`,
-      description: `The page at the back of a ${clinic.name} plan, with the team's photos.`,
+      // "a Essendon" reads wrong; pick the article from the clinic's first letter.
+      description: `The page at the back of a${/^[AEIOU]/i.test(clinic.name) ? 'n' : ''} ${clinic.name} plan, with the team's photos.`,
       versions: versionsFor('team', clinic.slug),
     })),
   ];
