@@ -1,174 +1,113 @@
-# 🦷 Dental Treatment Plan Generator
+# 🦷 SIA Dental — Treatment Plans
 
-A modern web application for generating professional dental treatment plan PDFs. Built for SIA Dental clinics to streamline the creation of personalized treatment plans for patients.
+Treatment plan PDFs for **SIA Dental**, three clinics in Melbourne: Essendon, Burwood and Mulgrave.
 
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)
-![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
+Someone fills in a patient's details and their treatments, and the app produces the branded PDF the patient is handed. It is used in real appointments.
+
+![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=flat&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React_19-61DAFB?style=flat&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
-
-## ✨ Features
-
-- **Patient Information Form** - Capture patient name, doctor, date, and clinic location
-- **Doctor Photo Upload** - Add a circular doctor profile photo to the cover page
-- **Dynamic Treatment Table** - Add/remove treatment items with auto-fill from fee schedule
-- **Multi-line Descriptions** - Support for detailed treatment descriptions
-- **Auto-Calculate Fees** - Real-time total calculation as you add items
-- **Item Code Autocomplete** - Type an item code and description/fee auto-fills
-- **Live Canvas Preview** - See exactly what the PDF will look like before downloading
-- **PDF Template Overlay** - Overlay dynamic content on existing PDF templates
-- **Team Page Selection** - Automatically append team pages based on location
-- **Configurable Positioning** - Adjust text positions, font sizes, and table settings
-- **PDF Download** - Generate professional PDFs with one click
-- **No Backend Required** - 100% client-side, data stays in your browser
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- Yarn
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/ArviinM/dental-treatment-plan.git
-
-# Navigate to project directory
-cd dental-treatment-plan
-
-# Install dependencies
-yarn
-
-# Start development server
-yarn dev
-```
-
-The app will be available at `http://localhost:5173`
-
-### Build for Production
-
-```bash
-yarn build
-```
-
-## 🛠️ Tech Stack
-
-- **Framework:** [Vite](https://vitejs.dev/) + [React 18](https://react.dev/)
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
-- **PDF Generation:** [pdf-lib](https://pdf-lib.js.org/) with custom font embedding
-- **Live Preview:** HTML Canvas rendering
-- **Font:** [Nunito](https://fonts.google.com/specimen/Nunito) (Google Fonts)
-- **Hosting:** [Vercel](https://vercel.com/)
-
-## 📁 Project Structure
-
-```
-src/
-├── components/
-│   ├── ui/                        # shadcn/ui components
-│   ├── preview/                   # PDF preview components
-│   │   └── CanvasPreview.tsx      # Live canvas-based preview
-│   ├── settings/                  # Settings components
-│   │   └── TemplateUploader.tsx   # Template configuration
-│   └── forms/                     # Form components
-│       ├── PatientInfoForm.tsx    # Patient & doctor info
-│       └── TreatmentItemsTable.tsx # Treatment items editor
-├── services/
-│   └── pdfGenerator.ts            # PDF generation with pdf-lib
-├── hooks/
-│   ├── useFeeCalculator.ts        # Total calculation logic
-│   └── useLocalStorage.ts         # Persist data to localStorage
-├── data/
-│   └── default-fee-schedule.ts    # Default item codes & fees
-├── types/
-│   └── index.ts                   # TypeScript interfaces
-├── lib/
-│   └── utils.ts                   # Utility functions
-├── App.tsx
-└── main.tsx
-
-public/
-├── brand/                         # Logo and branding assets
-├── fonts/                         # Nunito font files (TTF)
-└── templates/                     # PDF and PNG templates
-    ├── TreatmentPlanBlank.pdf     # Cover & treatment page template
-    ├── TreatmentPlanBlank-*.png   # Preview images
-    ├── essendon-team.pdf          # Essendon team page
-    └── burwood-mulgrave-team.pdf  # Burwood/Mulgrave team page
-```
-
-## 📋 Usage
-
-1. **Enter Patient Details** - Fill in patient name, select doctor, date, and location
-2. **Upload Doctor Photo** - Optionally add a doctor profile photo
-3. **Add Treatment Items** - Type an item code (e.g., "011") to auto-fill description and fee
-4. **Edit Descriptions** - Use multi-line text for detailed treatment descriptions
-5. **Preview** - View the live preview panel to see exactly how the PDF will look
-6. **Download** - Click "Download PDF" to save the treatment plan
-
-## ⚙️ Settings
-
-Access the **Settings** tab to customize:
-
-### Text Positioning
-- **Patient Name** - X, Y position and font size
-- **Doctor Name** - X, Y position and font size
-- **Doctor Photo** - X, Y position and size (diameter)
-
-### Table Settings
-- **Table Start Y** - Vertical position of the table
-- **Table Margin X** - Left/right margins
-- **Row Height** - Height per treatment row
-- **Max Rows Per Page** - Rows before pagination
-
-## 🎨 Customization
-
-### Fee Schedule
-
-The default fee schedule is located in `src/data/default-fee-schedule.ts`. You can modify item codes, descriptions, and fees to match your clinic's pricing.
-
-### Locations
-
-Clinic locations are defined in `src/types/index.ts` under the `LOCATIONS` constant:
-- Essendon
-- Burwood
-- Mulgrave
-
-### Templates
-
-PDF templates are stored in `public/templates/`. To update:
-1. Replace the PDF files with your custom designs
-2. Generate PNG previews for the canvas preview
-3. Ensure page dimensions match (11.25 × 20.00 inches / 810 × 1440 points)
-
-### Branding
-
-Brand assets are in `public/brand/`:
-- `logo-favicon.png` - Browser tab icon
-- `logo-rectangle.png` - Header logo
-
-## 🎨 Brand Colors
-
-- **SIA Teal:** `#2BBFB3`
-- **SIA Purple:** `#A5338D`
-- **Dark Gray:** `#1F2937`
-
-## 📝 Table Layout
-
-The treatment table follows this structure:
-
-| Item | Tooth | Description | Qty | Fee |
-|------|-------|-------------|-----|-----|
-| 011  | 23    | Multi-line description... | 1 | $80.00 |
-
-## 📄 License
-
-MIT License - feel free to use this for your dental clinic!
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat&logo=supabase&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_v4-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
 
 ---
 
-Built with ❤️ for SIA Dental
+## Two ways to make a plan, on purpose
+
+| | |
+|---|---|
+| **`/legacy`** — *Classic builder* | The original screen, frozen. Same layout, same tabs, same buttons. It is not going anywhere. |
+| **`/plans/new`** — *Make a plan* | Newer and quicker: search treatments by name, group them into visits, and it saves as you go. |
+
+Both render through the same engine, so the PDF is identical whichever screen produced it.
+
+The classic builder is kept deliberately. The team has habits built on it, and a tool that changes underneath people mid-appointment is a worse tool. They move across when they want to.
+
+## What it does
+
+- **Plans** — patient, dentist, clinic, treatments grouped by phase and visit, with fees that total themselves
+- **Live preview** — a canvas that redraws as you type, showing exactly what will download
+- **PDF generation** — server-side, overlaying content onto the designed Canva artwork
+- **Import** — read an existing treatment plan PDF back in
+- **Fee schedule** — one shared price list, editable by the whole team
+- **Dentists** — add, edit and retire dentists and their photos, no deploy needed
+- **Templates** — replace the plan and team page artwork, with version history and one-click restore
+- **Text positioning** — nudge where the name, dentist, photo and table sit, with a live preview
+- **Accounts** — admin creates them and hands over a temporary password
+- **History** — who changed what, and who opened which plan
+
+## Stack
+
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 · shadcn/ui · [pdf-lib](https://pdf-lib.js.org/) · Supabase (Postgres, Auth, Storage) · Vercel
+
+Both Vercel functions and the Supabase project run in **Sydney** — the clinics are in Melbourne, and a US region would cross the Pacific twice for every query.
+
+## Running it
+
+```bash
+yarn                      # install
+cp .env.example .env.local  # then fill it in from the Supabase dashboard
+yarn dev                  # http://localhost:3000
+```
+
+You will need an account to get past the login. The first one is minted outside the app, because only an admin can create an admin:
+
+```bash
+./scripts/create-admin.sh "Your Name" you@example.com
+```
+
+It prints a temporary password once and forces a change at first sign-in. Everyone after that is created from **/admin/accounts**.
+
+### Database
+
+Real migrations, applied with the Supabase CLI — not SQL pasted into the dashboard.
+
+```bash
+yarn db:link     # needs SUPABASE_PROJECT_REF
+yarn db:push     # apply migrations
+yarn db:seed     # clinics, dentists, 168 fee items
+yarn db:types    # regenerate src/lib/database.types.ts
+```
+
+Then upload the dentist photos, which SQL cannot carry:
+
+```bash
+./scripts/with-env.sh node scripts/migrate-staff-photos.mjs --apply
+```
+
+See [`supabase/README.md`](supabase/README.md) for the schema and the traps worth knowing.
+
+### Tests
+
+```bash
+yarn test              # unit — fast and safe
+yarn test:integration  # ⚠️ runs against the REAL database
+```
+
+The integration suite proves what row level security actually enforces — that a staff member cannot promote themselves, cannot delete a fee item, cannot write history under someone else's name. Every assertion is made with a real signed-in user's client, never the service role: a service-role assertion passes no matter how broken the policies are.
+
+Fixtures are tagged `zz-autotest` and cleaned up, and nothing deletes a row it did not create. Do not run it once real patient records exist.
+
+## Patient data
+
+Saved plans hold patient names and treatments, which is health information about identifiable people. In Victoria that means the **Privacy Act 1988 (Cth)** and the **Health Records Act 2001 (Vic)** — not HIPAA, which is US law. The Privacy Act's small-business exemption does not cover health service providers.
+
+What follows from that, and is built in:
+
+- Data lives in Sydney
+- Row level security on every table, and reads are logged as well as writes
+- Deleting a plan is a soft delete with a retention date; a nightly job erases rows only once that date has passed, and records every run
+- No patient name reaches a URL, a function log or any third-party tool
+
+The 7-year default in `default_retention_years()` is a sensible starting point, not legal advice.
+
+## Notes
+
+- **Page size is 810 × 1440 pt** (11.25 × 20 in) — matches the Canva artwork, deliberately not A4
+- **PDF coordinates start bottom-left**; the canvas preview starts top-left and converts
+- **Measurements live in `src/lib/pdf/layout.ts`**, shared by the renderer and the preview so they cannot drift
+- Brand: SIA Teal `#2BBFB3`, SIA Purple `#A5338D`, Dark Gray `#1F2937`, Nunito throughout
+
+---
+
+Built for SIA Dental.
