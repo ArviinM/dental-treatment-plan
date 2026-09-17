@@ -110,4 +110,4 @@ The 7-year default in `default_retention_years()` is a sensible starting point, 
 
 ---
 
-Built for SIA Dental.
+Built by **Arvin Medina** for SIA Dental.
