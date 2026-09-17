@@ -100,8 +100,12 @@ export function TemplateSettingsEditor({ initial }: { initial: TemplateSettings 
   };
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
-      <div className="min-w-0">
+    // Two columns when there is room; stacked otherwise. The preview is NEVER
+    // hidden — these are raw coordinates, and without seeing the result the
+    // controls are just numbers. Stacked, the preview goes FIRST so it is the
+    // thing you see before you start changing values.
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="order-2 min-w-0 lg:order-1">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-sm text-slate-500">
           These apply to every plan the whole team makes, not just yours.
@@ -131,13 +135,15 @@ export function TemplateSettingsEditor({ initial }: { initial: TemplateSettings 
       {/* Moving a number without seeing the result is guesswork, so the page
           shows a sample plan that redraws as you type. Same renderer the plan
           builders use, so it is not an approximation. */}
-      <aside className="min-w-0 max-xl:hidden">
-        <div className="sticky top-6">
+      <aside className="order-1 min-w-0 lg:order-2">
+        <div className="lg:sticky lg:top-6">
           <h3 className="mb-1 text-sm font-semibold text-slate-400">Preview</h3>
           <p className="mb-3 text-sm text-slate-500">
             A sample plan, so you can see where things land.
           </p>
-          <CanvasPreview data={SAMPLE_PLAN} settings={settings} />
+          <div className="mx-auto max-w-xs lg:max-w-none">
+            <CanvasPreview data={SAMPLE_PLAN} settings={settings} />
+          </div>
         </div>
       </aside>
     </div>

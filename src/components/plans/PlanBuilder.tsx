@@ -297,7 +297,6 @@ export function PlanBuilder({
             type="button"
             variant="outline"
             onClick={() => setShowPreview((v) => !v)}
-            className="max-lg:hidden"
           >
             {showPreview ? (
               <>
@@ -430,14 +429,16 @@ export function PlanBuilder({
         </div>
 
         {showPreview && (
-          <aside className="min-w-0 max-lg:hidden">
-            {/* Sticky so the page stays visible while you work down a long plan. */}
-            <div className="sticky top-6">
+          <aside className="order-first min-w-0 lg:order-none">
+            {/* Never hidden on smaller screens, only stacked. The preview is
+                the point: it is what tells you the plan is right before a
+                patient sees it. Sticky where there is room beside the form. */}
+            <div className="lg:sticky lg:top-6">
               <h2 className="mb-1 text-sm font-semibold text-slate-400">Preview</h2>
-              <p className="mb-3 text-sm text-slate-500">
-                Exactly what downloads.
-              </p>
-              <CanvasPreview data={planData} settings={templateSettings} />
+              <p className="mb-3 text-sm text-slate-500">Exactly what downloads.</p>
+              <div className="mx-auto max-w-xs lg:max-w-none">
+                <CanvasPreview data={planData} settings={templateSettings} />
+              </div>
             </div>
           </aside>
         )}
