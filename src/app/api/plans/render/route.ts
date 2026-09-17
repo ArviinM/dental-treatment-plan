@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { generateTreatmentPlanPdf } from '@/lib/pdf/generate';
+import { getCurrentUser } from '@/lib/auth';
 
 /**
  * Renders a treatment plan to PDF.
@@ -11,6 +12,12 @@ import { generateTreatmentPlanPdf } from '@/lib/pdf/generate';
  * to the existing `downloadPdf` helper, so the download itself is unchanged.
  *
  * Node runtime, not edge: the renderer reads fonts and templates off disk.
+ *
+ * Checks the session itself rather than trusting src/proxy.ts to have done it.
+ * The proxy's matcher is a regex, and one careless edit to it would leave this
+ * endpoint — which takes a patient's name and treatments in its body — open to
+ * anyone. A route handler returns 401 rather than redirecting, because the
+ * caller is fetch(), not a browser following a location header.
  */
 export const runtime = 'nodejs';
 
@@ -58,6 +65,11 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'You need to be signed in.' }, { status: 401 });
+  }
+
   let payload: unknown;
 
   try {
