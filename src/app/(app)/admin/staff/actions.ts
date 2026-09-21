@@ -192,35 +192,56 @@ export async function setStaffActive(id: string, isActive: boolean): Promise<Sta
 }
 
 /**
- * Stores a staff photo.
+ * Staff photos: prepare, upload direct from the browser, then finalize.
  *
- * Two files arrive: the original, and a circular PNG the browser has already
- * cropped. The crop happens in the browser because the server has no canvas —
- * and doing it once at upload beats doing it on every PDF download, which is
- * what the old client-side renderer did.
+ * The file used to travel through a server action, which rejects request bodies
+ * over 1 MB — and a photo straight off a phone is routinely 2-5 MB. That is the
+ * same failure that broke template uploads in production, so photos go straight
+ * from the browser to storage too, and the server only authorises and records.
+ *
+ * Two files are stored: the original, and a circular PNG the browser has already
+ * cropped. The crop happens in the browser because the server has no canvas, and
+ * doing it once here beats redoing it on every PDF download.
  */
-export async function uploadStaffPhoto(formData: FormData): Promise<StaffActionResult> {
+
+const PHOTO_BUCKET = 'staff-photos';
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+const PHOTO_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+export type PreparedPhotoUpload =
+  | {
+      ok: true;
+      original: { path: string; token: string };
+      circle: { path: string; token: string };
+    }
+  | { ok: false; error: string };
+
+export async function prepareStaffPhotoUpload(input: {
+  id: string;
+  fileType: string;
+  fileSize: number;
+}): Promise<PreparedPhotoUpload> {
   await requireAdmin();
 
-  const id = String(formData.get('id') ?? '');
-  const original = formData.get('original');
-  const circle = formData.get('circle');
+  const ext = PHOTO_TYPES[input.fileType];
+  if (!ext) return { ok: false, error: 'That needs to be a JPG, PNG or WebP photo.' };
 
-  if (!id) return { ok: false, error: 'Missing which person this photo is for.' };
-  if (!(original instanceof File) || !(circle instanceof File)) {
-    return { ok: false, error: 'That did not arrive as an image. Please try again.' };
-  }
-
-  // Re-checked here as well as on the bucket: a clear sentence beats a 413.
-  if (original.size > 5 * 1024 * 1024) {
-    return { ok: false, error: 'That photo is larger than 5 MB. Please use a smaller one.' };
+  if (input.fileSize > PHOTO_MAX_BYTES) {
+    return {
+      ok: false,
+      error: `That photo is ${(input.fileSize / 1048576).toFixed(1)} MB — the limit is 5 MB. A screenshot of it, or a smaller export, will do.`,
+    };
   }
 
   const supabase = await createClient();
   const { data: target } = await supabase
     .from('staff_members')
-    .select('slug, full_name')
-    .eq('id', id)
+    .select('slug')
+    .eq('id', input.id)
     .maybeSingle();
 
   if (!target) return { ok: false, error: 'They are no longer in the directory.' };
@@ -228,38 +249,66 @@ export async function uploadStaffPhoto(formData: FormData): Promise<StaffActionR
   // A fresh random segment each time, so a replaced photo gets a new URL and
   // nobody is served a stale image out of a CDN or browser cache.
   const stamp = crypto.randomUUID().slice(0, 8);
-  const originalExt = original.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const originalPath = `${target.slug}/${stamp}-original.${originalExt}`;
-  const circlePath = `${target.slug}/${stamp}-circle.png`;
+  const bucket = supabase.storage.from(PHOTO_BUCKET);
 
-  const uploads = await Promise.all([
-    supabase.storage
-      .from('staff-photos')
-      .upload(originalPath, original, { contentType: original.type, upsert: true }),
-    supabase.storage
-      .from('staff-photos')
-      .upload(circlePath, circle, { contentType: 'image/png', upsert: true }),
+  // Issued with the admin's own client so the bucket's upload policy decides.
+  const [original, circle] = await Promise.all([
+    bucket.createSignedUploadUrl(`${target.slug}/${stamp}-original.${ext}`),
+    bucket.createSignedUploadUrl(`${target.slug}/${stamp}-circle.png`),
   ]);
 
-  if (uploads.some((u) => u.error)) {
-    return { ok: false, error: 'We could not upload that photo. Please try again.' };
+  if (original.error || !original.data || circle.error || !circle.data) {
+    return { ok: false, error: 'We could not start that upload. Please try again.' };
+  }
+
+  return {
+    ok: true,
+    original: { path: original.data.path, token: original.data.token },
+    circle: { path: circle.data.path, token: circle.data.token },
+  };
+}
+
+export async function finalizeStaffPhotoUpload(input: {
+  id: string;
+  originalPath: string;
+  circlePath: string;
+}): Promise<StaffActionResult> {
+  await requireAdmin();
+
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .from('staff_members')
+    .select('slug, full_name')
+    .eq('id', input.id)
+    .maybeSingle();
+
+  if (!target) return { ok: false, error: 'They are no longer in the directory.' };
+
+  // The paths come back from the browser. Both must sit in THIS person's folder,
+  // or a caller could attach someone else's photo to them.
+  const folder = `${target.slug}/`;
+  const inFolder = (path: string) => path.startsWith(folder) && !path.includes('..');
+
+  if (!inFolder(input.originalPath) || !inFolder(input.circlePath)) {
+    return { ok: false, error: 'That upload did not match what was expected. Please try again.' };
   }
 
   const { error } = await supabase
     .from('staff_members')
-    .update({ photo_path: originalPath, photo_circle_path: circlePath })
-    .eq('id', id);
+    .update({ photo_path: input.originalPath, photo_circle_path: input.circlePath })
+    .eq('id', input.id);
 
   if (error) return { ok: false, error: 'The photo uploaded but we could not save it.' };
 
   await logActivity({
     action: 'staff_member.photo',
     entityType: 'staff_member',
-    entityId: id,
+    entityId: input.id,
     summary: `${target.full_name}'s photo was updated`,
   });
 
   revalidatePath('/admin/staff');
   revalidatePath('/legacy');
-  return { ok: true, id };
+  revalidatePath('/plans', 'layout');
+  return { ok: true, id: input.id };
 }

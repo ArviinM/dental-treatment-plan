@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cropToCircleDataUrl } from '@/lib/image/circle-crop';
+import { createClient } from '@/lib/supabase/client';
 import {
   createStaffMember,
   setStaffActive,
   updateStaffMember,
-  uploadStaffPhoto,
+  finalizeStaffPhotoUpload,
+  prepareStaffPhotoUpload,
 } from '@/app/(app)/admin/staff/actions';
 
 export type StaffRow = {
@@ -216,14 +218,27 @@ function Avatar({ person }: { person: StaffRow }) {
   );
 }
 
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+
 function PhotoButton({ id, hasPhoto }: { id: string; hasPhoto: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
   const onFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+
+    // Checked before anything uploads, so a phone photo that is too big fails in
+    // a second with a sentence rather than after a long wait.
+    if (file.size > PHOTO_MAX_BYTES) {
+      toast.error(
+        `That photo is ${(file.size / 1048576).toFixed(1)} MB — the limit is 5 MB. A screenshot of it, or a smaller export, will do.`
+      );
+      return;
+    }
+
+    setPending(true);
 
     try {
       // Crop here, not on the server: the PDF renderer needs a circular PNG and
@@ -232,18 +247,46 @@ function PhotoButton({ id, hasPhoto }: { id: string; hasPhoto: boolean }) {
       const circleDataUrl = await cropToCircleDataUrl(URL.createObjectURL(file));
       const circle = await dataUrlToFile(circleDataUrl, 'circle.png');
 
-      const formData = new FormData();
-      formData.set('id', id);
-      formData.set('original', file);
-      formData.set('circle', circle);
-
-      startTransition(async () => {
-        const result = await uploadStaffPhoto(formData);
-        if (!result.ok) toast.error(result.error ?? 'Could not upload that photo.');
-        else toast.success('Photo updated');
+      const prepared = await prepareStaffPhotoUpload({
+        id,
+        fileType: file.type,
+        fileSize: file.size,
       });
+
+      if (!prepared.ok) {
+        toast.error(prepared.error);
+        return;
+      }
+
+      // Straight to storage. Through a server action this failed for any photo
+      // over 1 MB, which is most photos taken on a phone.
+      const bucket = createClient().storage.from('staff-photos');
+      const [originalUpload, circleUpload] = await Promise.all([
+        bucket.uploadToSignedUrl(prepared.original.path, prepared.original.token, file, {
+          contentType: file.type,
+        }),
+        bucket.uploadToSignedUrl(prepared.circle.path, prepared.circle.token, circle, {
+          contentType: 'image/png',
+        }),
+      ]);
+
+      if (originalUpload.error || circleUpload.error) {
+        toast.error('The upload did not finish. Check your connection and try again.');
+        return;
+      }
+
+      const result = await finalizeStaffPhotoUpload({
+        id,
+        originalPath: prepared.original.path,
+        circlePath: prepared.circle.path,
+      });
+
+      if (!result.ok) toast.error(result.error ?? 'Could not save that photo.');
+      else toast.success('Photo updated');
     } catch {
       toast.error('We could not read that image. Try a JPG or PNG.');
+    } finally {
+      setPending(false);
     }
   };
 

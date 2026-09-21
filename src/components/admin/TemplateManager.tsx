@@ -5,7 +5,12 @@ import { FileText, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { restoreTemplate, uploadTemplate } from '@/app/(app)/admin/templates/upload-actions';
+import {
+  finalizeTemplateUpload,
+  prepareTemplateUpload,
+  restoreTemplate,
+} from '@/app/(app)/admin/templates/upload-actions';
+import { createClient } from '@/lib/supabase/client';
 
 export type TemplateVersion = {
   id: string;
@@ -47,10 +52,15 @@ export function TemplateManager({ slots }: { slots: TemplateSlot[] }) {
  * replace it. Version history stays collapsed until asked for, because most of
  * the time there is none.
  */
+const MAX_BYTES = 25 * 1024 * 1024;
+
+type Stage = 'idle' | 'uploading' | 'checking';
+
 function SlotRow({ slot }: { slot: TemplateSlot }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [pending, startTransition] = useTransition();
+  const [stage, setStage] = useState<Stage>('idle');
   const [showHistory, setShowHistory] = useState(false);
+  const pending = stage !== 'idle';
 
   const current = slot.versions.find((v) => v.isActive);
   const older = slot.versions.filter((v) => !v.isActive);
@@ -60,16 +70,76 @@ function SlotRow({ slot }: { slot: TemplateSlot }) {
     event.target.value = '';
     if (!file) return;
 
-    const formData = new FormData();
-    formData.set('kind', slot.kind);
-    if (slot.clinicSlug) formData.set('clinicSlug', slot.clinicSlug);
-    formData.set('file', file);
+    // Caught here first so a wrong file fails instantly, with a sentence, rather
+    // than after a multi-megabyte upload.
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('That needs to be a PDF. In Canva, choose Share → Download → PDF.');
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      toast.error(
+        `That PDF is ${(file.size / 1048576).toFixed(1)} MB — the limit is 25 MB. Try exporting it from Canva at a lower quality.`
+      );
+      return;
+    }
 
-    startTransition(async () => {
-      const result = await uploadTemplate(formData);
-      if (!result.ok) toast.error(result.error ?? 'Could not upload that file.');
-      else toast.success(`${slot.label} replaced`);
-    });
+    void upload(file);
+  };
+
+  /**
+   * The file goes from the browser STRAIGHT to storage. Sending it through a
+   * server action is what broke in production: those reject bodies over 1 MB,
+   * and a Canva team page export is 2-5 MB.
+   */
+  const upload = async (file: File) => {
+    try {
+      setStage('uploading');
+
+      const prepared = await prepareTemplateUpload({
+        kind: slot.kind,
+        clinicSlug: slot.clinicSlug,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+
+      if (!prepared.ok) {
+        toast.error(prepared.error);
+        return;
+      }
+
+      const { error: uploadError } = await createClient()
+        .storage.from('plan-templates')
+        .uploadToSignedUrl(prepared.path, prepared.token, file, {
+          contentType: 'application/pdf',
+        });
+
+      if (uploadError) {
+        toast.error('The upload did not finish. Check your connection and try again.');
+        return;
+      }
+
+      setStage('checking');
+
+      const result = await finalizeTemplateUpload({
+        kind: slot.kind,
+        clinicSlug: slot.clinicSlug,
+        path: prepared.path,
+      });
+
+      if (!result.ok) {
+        toast.error(result.error ?? 'We could not use that file.');
+        return;
+      }
+
+      toast.success(`${slot.label} replaced. The next plan will use it.`);
+    } catch {
+      // Whatever went wrong, the admin gets a sentence and the page keeps
+      // working — never the "This page couldn't load" crash she reported.
+      toast.error('Something went wrong uploading that file. Please try again.');
+    } finally {
+      setStage('idle');
+    }
   };
 
   return (
@@ -112,7 +182,8 @@ function SlotRow({ slot }: { slot: TemplateSlot }) {
         >
           {pending ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {stage === 'checking' ? 'Checking…' : 'Uploading…'}
             </>
           ) : (
             <>
