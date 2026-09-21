@@ -1,13 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { PDFDocument } from 'pdf-lib';
 
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
 import { logActivity } from '@/lib/activity';
 import { invalidateTemplateLookup } from '@/lib/pdf/assets';
-import { PDF_PAGE_HEIGHT, PDF_PAGE_WIDTH } from '@/lib/pdf/layout';
+import { validateTemplatePdf } from '@/lib/pdf/validate-template';
 
 /**
  * Replacing the designed PDFs — the blank plan template, and the team page for
@@ -41,13 +40,6 @@ type Kind = 'plan' | 'team';
 
 const BUCKET = 'plan-templates';
 const MAX_BYTES = 25 * 1024 * 1024;
-
-/**
- * How far a page may be from 810 x 1440 pt before it is rejected. Canva exports
- * can come out a fraction of a point off; a genuinely different page size is
- * hundreds of points off.
- */
-const SIZE_TOLERANCE_PT = 2;
 
 function folderFor(kind: Kind, clinicSlug: string | null): string {
   return `${kind}/${clinicSlug ?? 'shared'}/`;
@@ -154,43 +146,14 @@ export async function finalizeTemplateUpload(input: {
     return { ok: false, error: 'The upload did not arrive. Please try again.' };
   }
 
-  // Open it for real. Previously a file that failed to parse was accepted and
-  // then silently ignored at render time in favour of the bundled template,
-  // which would look to Ericka like her upload "did nothing".
-  let pageCount: number;
-  let firstPage: { width: number; height: number };
-
-  try {
-    const pdf = await PDFDocument.load(new Uint8Array(await blob.arrayBuffer()), {
-      ignoreEncryption: true,
-    });
-    pageCount = pdf.getPageCount();
-    firstPage = pdf.getPage(0).getSize();
-  } catch {
-    return discard('That file could not be opened as a PDF. Try exporting it again from Canva.');
-  }
-
-  if (input.kind === 'plan') {
-    // The cover, then the first treatment page. A third, the continuation page,
-    // is optional — the renderer reuses page two when it is absent.
-    if (pageCount < 2) {
-      return discard(
-        `The plan template needs at least 2 pages (the cover, then the treatment page). This one has ${pageCount}.`
-      );
-    }
-
-    // Every text position is an absolute coordinate on an 810 x 1440 page. A
-    // template at another size would put the patient's name in the wrong place
-    // on every plan, so it is refused rather than accepted and quietly wrong.
-    const offWidth = Math.abs(firstPage.width - PDF_PAGE_WIDTH) > SIZE_TOLERANCE_PT;
-    const offHeight = Math.abs(firstPage.height - PDF_PAGE_HEIGHT) > SIZE_TOLERANCE_PT;
-
-    if (offWidth || offHeight) {
-      return discard(
-        `The plan template must be 810 × 1440 pt (11.25 × 20 in), the same size as the Canva design. This one is ${Math.round(firstPage.width)} × ${Math.round(firstPage.height)} pt.`
-      );
-    }
-  }
+  // Open it for real, and refuse it if it is not usable. The checks live in
+  // lib/pdf/validate-template so they can be tested against real files.
+  const check = await validateTemplatePdf(
+    new Uint8Array(await blob.arrayBuffer()),
+    input.kind
+  );
+  if (!check.ok) return discard(check.error);
+  const pageCount = check.pageCount;
 
   // Stand the old one down first: a partial unique index allows only one active
   // template per slot, so inserting before deactivating would be rejected.
