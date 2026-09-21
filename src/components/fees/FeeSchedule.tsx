@@ -39,7 +39,13 @@ function money(value: number): string {
  * not "browse 168 items". Editing happens in place rather than in a dialog, so
  * you can see the row you are changing next to the ones around it.
  */
-export function FeeSchedule({ items, canDelete }: { items: FeeRow[]; canDelete: boolean }) {
+/**
+ * `canEdit` is false for staff: they can search and read every fee, because
+ * they need prices to build a plan, but changing one is an admin's job. The
+ * controls are hidden rather than shown and refused — a button that only ever
+ * says "no" is worse than no button. The database enforces it regardless.
+ */
+export function FeeSchedule({ items, canEdit }: { items: FeeRow[]; canEdit: boolean }) {
   const [query, setQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -71,10 +77,14 @@ export function FeeSchedule({ items, canDelete }: { items: FeeRow[]; canDelete: 
             aria-label="Search the fee schedule"
           />
         </div>
-        <ImportButton />
-        <Button type="button" onClick={() => setAdding(true)} disabled={adding}>
-          <Plus className="mr-2 h-4 w-4" /> Add item
-        </Button>
+        {canEdit && (
+          <>
+            <ImportButton />
+            <Button type="button" onClick={() => setAdding(true)} disabled={adding}>
+              <Plus className="mr-2 h-4 w-4" /> Add item
+            </Button>
+          </>
+        )}
       </div>
 
       {adding && <EditorRow draft={EMPTY} onCancel={() => setAdding(false)} />}
@@ -109,18 +119,20 @@ export function FeeSchedule({ items, canDelete }: { items: FeeRow[]; canDelete: 
               <span className="w-24 shrink-0 text-right font-medium tabular-nums text-sia-dark">
                 {money(item.fee)}
               </span>
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingId(item.id)}
-                  aria-label={`Edit item ${item.code}`}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                {canDelete && <DeleteButton id={item.id} code={item.code} />}
-              </div>
+              {canEdit && (
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingId(item.id)}
+                    aria-label={`Edit item ${item.code}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <DeleteButton id={item.id} code={item.code} />
+                </div>
+              )}
             </li>
           )
         )}

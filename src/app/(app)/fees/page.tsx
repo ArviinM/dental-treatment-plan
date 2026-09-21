@@ -6,6 +6,7 @@ export const metadata = { title: 'Fee schedule | SIA Dental' };
 
 export default async function FeesPage() {
   const user = await requireUser();
+  const admin = isAdmin(user.role);
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -27,12 +28,18 @@ export default async function FeesPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-sia-dark">Fee schedule</h1>
         <p className="mt-2 text-slate-500">
-          One shared price list. A change here shows up for everyone straight away, and the plan
-          builder picks it up on the next plan.
+          {admin
+            ? 'One shared price list. A change here shows up for everyone straight away, and the next plan uses it.'
+            : 'The prices every plan uses. Search by code or name to look one up.'}
         </p>
+        {!admin && (
+          <p className="mt-2 text-sm text-slate-400">
+            Prices are set by an admin. If one looks wrong, let them know.
+          </p>
+        )}
       </header>
 
-      <FeeSchedule items={items} canDelete={isAdmin(user.role)} />
+      <FeeSchedule items={items} canEdit={admin} />
     </div>
   );
 }

@@ -29,7 +29,7 @@ The classic builder is kept deliberately. The team has habits built on it, and a
 - **Live preview** — a canvas that redraws as you type, showing exactly what will download
 - **PDF generation** — server-side, overlaying content onto the designed Canva artwork
 - **Import** — read an existing treatment plan PDF back in
-- **Fee schedule** — one shared price list, editable by the whole team
+- **Fee schedule** — one shared price list; everyone can look prices up, only an admin can change them
 - **Dentists** — add, edit and retire dentists and their photos, no deploy needed
 - **Templates** — replace the plan and team page artwork, with version history and one-click restore
 - **Text positioning** — nudge where the name, dentist, photo and table sit, with a live preview

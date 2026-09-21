@@ -7,15 +7,20 @@ import { requireUser, isAdmin } from '@/lib/auth';
 import { formatFee, logActivity } from '@/lib/activity';
 
 /**
- * Fee schedule edits.
+ * Fee schedule edits. Admin-only.
  *
- * Editable by the whole team, not just admins — it always has been, and taking
- * that away would change how they work. The safety net is the history log
- * rather than a permission wall, so every change here records who made it and
- * what the old value was.
+ * This started editable by the whole team, because the old app let anyone edit
+ * prices and the rebuild tried not to take abilities away. Ericka asked for the
+ * opposite: only she and the practice owner should change prices, which are the
+ * one thing on a plan a patient is asked to agree to. Staff can still read every
+ * fee — they need to, to build a plan.
  *
- * Deleting is the exception: it is the one change you cannot notice by reading
- * the list afterwards, so it is admin-only and enforced by RLS as well as here.
+ * Row level security is the real boundary (see the fees_admin_only migration).
+ * The check here exists so a staff member who somehow reaches an edit gets a
+ * sentence rather than a database error, and is not redirected away mid-task —
+ * which is what requireAdmin() would do from inside a server action.
+ *
+ * Every change is still recorded in the history, with the old value.
  */
 
 export type FeeActionResult = {
@@ -23,6 +28,16 @@ export type FeeActionResult = {
   error?: string;
   fieldErrors?: Record<string, string>;
 };
+
+const ADMIN_ONLY: FeeActionResult = {
+  ok: false,
+  error: 'Only an admin can change the fee schedule.',
+};
+
+async function canEditFees(): Promise<boolean> {
+  const user = await requireUser();
+  return isAdmin(user.role);
+}
 
 type FeeInput = {
   code: string;
@@ -44,7 +59,7 @@ function validate(values: FeeInput): Record<string, string> {
 }
 
 export async function createFeeItem(values: FeeInput): Promise<FeeActionResult> {
-  await requireUser();
+  if (!(await canEditFees())) return ADMIN_ONLY;
 
   const fieldErrors = validate(values);
   if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };
@@ -84,7 +99,7 @@ export async function createFeeItem(values: FeeInput): Promise<FeeActionResult> 
 }
 
 export async function updateFeeItem(id: string, values: FeeInput): Promise<FeeActionResult> {
-  await requireUser();
+  if (!(await canEditFees())) return ADMIN_ONLY;
 
   const fieldErrors = validate(values);
   if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };
@@ -139,16 +154,7 @@ export async function updateFeeItem(id: string, values: FeeInput): Promise<FeeAc
 }
 
 export async function deleteFeeItem(id: string): Promise<FeeActionResult> {
-  const user = await requireUser();
-
-  // Checked here as well as in RLS. The policy is the real boundary; this just
-  // produces a sentence instead of a database error.
-  if (!isAdmin(user.role)) {
-    return {
-      ok: false,
-      error: 'Only an admin can remove an item. You can edit it instead.',
-    };
-  }
+  if (!(await canEditFees())) return ADMIN_ONLY;
 
   const supabase = await createClient();
   const { data: before } = await supabase
@@ -183,7 +189,7 @@ export type ImportRow = { code: string; name: string; description: string; fee: 
  * not silently remove that treatment from the schedule.
  */
 export async function importFeeItems(rows: ImportRow[]): Promise<FeeActionResult & { added?: number; updated?: number }> {
-  await requireUser();
+  if (!(await canEditFees())) return ADMIN_ONLY;
 
   if (!rows.length) return { ok: false, error: 'That file had no rows we could read.' };
   if (rows.length > 2000) return { ok: false, error: 'That file is too large — 2000 rows maximum.' };

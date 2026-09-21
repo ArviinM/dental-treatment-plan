@@ -617,7 +617,7 @@ export function PlanEditor({
                       <Button variant="outline" size="sm" asChild className="flex-shrink-0">
                         <a href="/fees">
                           <Pencil className="h-4 w-4 mr-2" />
-                          Edit fees
+                          {canSaveSettings ? 'Edit fees' : 'See all fees'}
                         </a>
                       </Button>
                     </div>

@@ -55,8 +55,8 @@ const STEPS: Step[] = [
         <Link href="/fees" className="font-medium text-sia-dark underline">
           fee schedule
         </Link>{' '}
-        is shared by everyone, so a change is live for the whole team straight away. Anyone can edit
-        it, and every change is recorded.
+        is where every price lives — look any item up by code or name. Only an admin can change a
+        price, and every change is recorded.
       </>
     ),
   },

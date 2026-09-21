@@ -117,25 +117,72 @@ describe('access control', () => {
     });
   });
 
-  describe('fee schedule', () => {
-    it('lets any signed-in user add and edit an item', async () => {
+  describe('fee schedule — admin-only to change, readable by everyone', () => {
+    // Locked down on 2026-09-21 at Ericka's request: prices are the one thing on
+    // a plan a patient is asked to agree to. Staff still need to READ them.
+
+    it('lets a staff member read the fees a plan needs', async () => {
+      const { data, error } = await staff.client.from('fee_items').select('code, fee').limit(5);
+
+      expect(error).toBeNull();
+      expect(data?.length, 'staff could not read the fee schedule').toBeGreaterThan(0);
+    });
+
+    it('stops a staff member adding an item', async () => {
+      const code = `${TEST_TAG}-${uid()}`;
+      await staff.client.from('fee_items').insert({ code, name: 'Staff attempt', description: '', fee: 1 });
+
+      // The error alone is not proof — prove the row does not exist.
+      const { data: after } = await adminClient()
+        .from('fee_items')
+        .select('id')
+        .eq('code', code)
+        .maybeSingle();
+
+      expect(after, 'a staff member added a fee item').toBeNull();
+    });
+
+    it('stops a staff member changing a price', async () => {
+      const code = `${TEST_TAG}-${uid()}`;
+      const { data: created } = await adminClient()
+        .from('fee_items')
+        .insert({ code, name: 'Autotest price', description: '', fee: 100 })
+        .select('id')
+        .single();
+
+      // An update blocked by RLS matches zero rows and reports success, so the
+      // only honest check is re-reading the price.
+      await staff.client.from('fee_items').update({ fee: 1 }).eq('id', created!.id);
+
+      const { data: after } = await adminClient()
+        .from('fee_items')
+        .select('fee')
+        .eq('id', created!.id)
+        .single();
+
+      expect(Number(after?.fee), 'a staff member changed a price').toBe(100);
+    });
+
+    it('lets an admin add and change an item', async () => {
       const code = `${TEST_TAG}-${uid()}`;
 
-      const { data: created, error } = await staff.client
+      const { data: created, error } = await admin.client
         .from('fee_items')
-        .insert({ code, name: 'Autotest item', description: '', fee: 100 })
+        .insert({ code, name: 'Autotest admin item', description: '', fee: 100 })
         .select('id')
         .single();
 
       expect(error).toBeNull();
-      expect(created?.id).toBeTruthy();
 
-      const { error: updateError } = await staff.client
+      await admin.client.from('fee_items').update({ fee: 125 }).eq('id', created!.id);
+
+      const { data: after } = await adminClient()
         .from('fee_items')
-        .update({ fee: 125 })
-        .eq('id', created!.id);
+        .select('fee')
+        .eq('id', created!.id)
+        .single();
 
-      expect(updateError).toBeNull();
+      expect(Number(after?.fee)).toBe(125);
     });
 
     it('stops a staff member deleting an item', async () => {
