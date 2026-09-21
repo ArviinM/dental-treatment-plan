@@ -20,6 +20,7 @@ import type {
   TreatmentPlanData,
 } from '@/types';
 import type { PlanDetail } from '@/lib/plans/mutations';
+import type { TemplateBackgrounds } from '@/lib/data/reference';
 
 /**
  * The newer way to build a treatment plan.
@@ -47,6 +48,8 @@ type PlanBuilderProps = {
   clinics: { slug: Location; name: string }[];
   templateSettings: TemplateSettings;
   existing?: PlanDetail;
+  /** The live artwork, so the preview matches the PDF it previews. */
+  backgrounds?: TemplateBackgrounds;
 };
 
 let nextId = 0;
@@ -87,6 +90,7 @@ export function PlanBuilder({
   clinics,
   templateSettings,
   existing,
+  backgrounds,
 }: PlanBuilderProps) {
   const router = useRouter();
 
@@ -437,7 +441,7 @@ export function PlanBuilder({
               <h2 className="mb-1 text-sm font-semibold text-slate-400">Preview</h2>
               <p className="mb-3 text-sm text-slate-500">Exactly what downloads.</p>
               <div className="mx-auto max-w-xs lg:max-w-none">
-                <CanvasPreview data={planData} settings={templateSettings} />
+                <CanvasPreview data={planData} settings={templateSettings} backgrounds={backgrounds} />
               </div>
             </div>
           </aside>

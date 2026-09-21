@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { readFile } from 'node:fs/promises';
+import { PDFDocument } from 'pdf-lib';
 import path from 'node:path';
 
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -135,35 +136,71 @@ export function loadFont(weight: FontWeight): Promise<Uint8Array> {
   return readFromDisk(`font:${weight}`, path.join('fonts', FONT_FILES[weight]));
 }
 
-/** The blank plan template: cover, first treatment page, continuation. */
-export async function loadTemplatePdf(): Promise<Uint8Array> {
-  const uploaded = (await getActiveTemplatePaths()).get('plan:shared');
+export type LoadedTemplate = {
+  doc: PDFDocument;
+  /** Which file actually ended up in the plan — useful when diagnosing. */
+  source: 'uploaded' | 'bundled';
+};
 
-  if (uploaded) {
+/**
+ * Opens a PDF, or returns null if it cannot be opened.
+ *
+ * A download failing and a file failing to PARSE are the same problem from the
+ * user's side — the template is unusable — so both fall back the same way.
+ * Before this, only the first did: an uploaded file that downloaded fine but
+ * would not open failed the whole PDF instead of falling back.
+ */
+async function openPdf(bytes: Uint8Array): Promise<PDFDocument | null> {
+  try {
+    return await PDFDocument.load(bytes, { ignoreEncryption: true });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Tries an uploaded template, and falls back to the bundled original if it is
+ * missing, unreachable or unreadable. The bundled file ships with the app and
+ * is the one thing guaranteed to render, so a plan can ALWAYS be produced.
+ */
+async function loadWithFallback(
+  uploadedPath: string | undefined,
+  bundledKey: string,
+  bundledFile: string
+): Promise<LoadedTemplate> {
+  if (uploadedPath) {
     try {
-      return await readFromStorage(uploaded);
+      const doc = await openPdf(await readFromStorage(uploadedPath));
+      if (doc && doc.getPageCount() > 0) return { doc, source: 'uploaded' };
+
+      // Storage path only — never anything from the plan being rendered.
+      console.warn('uploaded template could not be opened; using the original', uploadedPath);
     } catch {
-      // Fall through to the bundled copy rather than failing the download.
+      console.warn('uploaded template could not be downloaded; using the original', uploadedPath);
     }
   }
 
-  return readFromDisk(`bundled:${BUNDLED_PLAN_TEMPLATE}`, path.join('templates', BUNDLED_PLAN_TEMPLATE));
+  const doc = await openPdf(await readFromDisk(bundledKey, path.join('templates', bundledFile)));
+  if (!doc) throw new Error(`The bundled template ${bundledFile} could not be opened.`);
+  return { doc, source: 'bundled' };
+}
+
+/**
+ * The plan template: cover, first treatment page, continuation.
+ *
+ * `overridePath` renders against a specific stored file instead of the live
+ * one — how a draft is previewed before anyone publishes it.
+ */
+export async function loadPlanTemplate(overridePath?: string): Promise<LoadedTemplate> {
+  const path_ = overridePath ?? (await getActiveTemplatePaths()).get('plan:shared');
+  return loadWithFallback(path_, `bundled:${BUNDLED_PLAN_TEMPLATE}`, BUNDLED_PLAN_TEMPLATE);
 }
 
 /** The team page appended to the end of a plan, one per clinic. */
-export async function loadTeamPdf(team: Team): Promise<Uint8Array> {
-  const uploaded = (await getActiveTemplatePaths()).get(`team:${team}`);
-
-  if (uploaded) {
-    try {
-      return await readFromStorage(uploaded);
-    } catch {
-      // As above: a stale-but-working team page beats a failed download.
-    }
-  }
-
+export async function loadTeamTemplate(team: Team, overridePath?: string): Promise<LoadedTemplate> {
+  const path_ = overridePath ?? (await getActiveTemplatePaths()).get(`team:${team}`);
   const bundled = BUNDLED_TEAM_TEMPLATES[team];
-  return readFromDisk(`bundled:${bundled}`, path.join('templates', bundled));
+  return loadWithFallback(path_, `bundled:${bundled}`, bundled);
 }
 
 /** Drops every cached asset. */

@@ -89,6 +89,27 @@ carry binary files, so `scripts/migrate-staff-photos.mjs --apply` is the other
 half of that migration — it is idempotent and skips anyone who already has a
 photo. The copies still in `public/dentist-photos/` are unused by the app.
 
+**Templates are drafted, then published — never live on upload.** An upload
+went live instantly once and broke every plan: the Canva master had its own
+table and heading printed on it, so the app's were drawn on top. Uploads now
+wait as drafts (`published_at` null) until an admin checks a sample plan and
+publishes. `/api/templates/[id]/sample` renders one with the REAL renderer.
+
+**The plan template must be artwork only.** The app draws the cover heading,
+the patient's name and the treatment table. A design with those already printed
+on it gets them twice. Team pages are appended whole and can contain anything.
+
+**Every template falls back to the bundled original** if it is missing,
+unreachable or will not open — see `loadWithFallback` in `lib/pdf/assets.ts`. A
+plan must always be producible. "Use the original" in the UI does the same on
+purpose.
+
+**The canvas preview paints the LIVE artwork** from `template-previews`, made in
+the browser at upload time (`lib/pdf/render-previews.ts`) because the server has
+no canvas. It used to paint the bundled PNGs whatever was uploaded, which is
+how a garbled PDF shipped behind a clean-looking preview. Any missing or failed
+image falls back to the bundled one.
+
 **Team pages are static PDFs** with staff baked into the artwork. Changing `data/dentists.ts` does **not** update them. Expect the directory and the team page to disagree.
 
 **`pdfjs-dist` must stay lazily imported.** It touches `DOMMatrix` at module scope, which breaks the production build when a prerendered page can reach it. See `getPdfJs()` in `services/pdfParser.ts`.

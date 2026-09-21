@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth';
-import { getClinics, getFeeSchedule, getStaffMembers, getTemplateSettings } from '@/lib/data/reference';
+import { getClinics, getFeeSchedule, getStaffMembers, getTemplateBackgrounds, getTemplateSettings } from '@/lib/data/reference';
 import { PlanBuilder } from '@/components/plans/PlanBuilder';
 import type { Dentist } from '@/data/dentists';
 
@@ -8,11 +8,12 @@ export const metadata = { title: 'New plan | SIA Dental' };
 export default async function NewPlanPage() {
   await requireUser();
 
-  const [feeSchedule, staff, clinics, templateSettings] = await Promise.all([
+  const [feeSchedule, staff, clinics, templateSettings, backgrounds] = await Promise.all([
     getFeeSchedule(),
     getStaffMembers(),
     getClinics(),
     getTemplateSettings(),
+    getTemplateBackgrounds(),
   ]);
 
   const dentists: Dentist[] = staff
@@ -32,6 +33,7 @@ export default async function NewPlanPage() {
       dentists={dentists}
       clinics={clinics.map((c) => ({ slug: c.slug, name: c.name }))}
       templateSettings={templateSettings}
+      backgrounds={backgrounds}
     />
   );
 }

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { TreatmentPlanData, TemplateSettings, Team } from '@/types';
 import { LOCATION_TO_TEAM, DEFAULT_TEMPLATE_PATHS } from '@/types';
+import type { TemplateBackgrounds } from '@/lib/data/reference';
 // Measurements and colours are shared with the server renderer so this preview
 // cannot drift away from the PDF it is previewing. See src/lib/pdf/layout.ts.
 import {
@@ -22,12 +23,21 @@ import {
 interface CanvasPreviewProps {
   data: TreatmentPlanData;
   settings: TemplateSettings;
+  /**
+   * The artwork that is actually live, from lib/data/reference. Anything left
+   * out — or any image that fails to load — falls back to the bundled original.
+   *
+   * Without this the preview always painted the originals, so after a new
+   * template was published it could show a clean plan while the real PDF had
+   * two tables printed on top of each other.
+   */
+  backgrounds?: TemplateBackgrounds;
 }
 
 // Page aspect ratio (height / width) - Custom size: 810 x 1440 points
 const PAGE_RATIO = PDF_PAGE_HEIGHT / PDF_PAGE_WIDTH;
 
-export function CanvasPreview({ data, settings }: CanvasPreviewProps) {
+export function CanvasPreview({ data, settings, backgrounds }: CanvasPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -40,42 +50,59 @@ export function CanvasPreview({ data, settings }: CanvasPreviewProps) {
   const itemPages = Math.max(1, Math.ceil(validItems.length / settings.maxRowsPerPage));
   const totalPages = 1 + itemPages + 1; // Cover + Treatment pages + Team page
 
-  // Load template images
+  // A stable key for the artwork, so the images reload when it changes (a
+  // draft being previewed, a template being published) and not on every render.
+  const backgroundsKey = JSON.stringify(backgrounds ?? {});
+
+  // Load template images: the live artwork where there is some, the bundled
+  // original where there is not, and the bundled original again if the live
+  // image will not load. The preview should never end up with a blank page.
   useEffect(() => {
+    const live: TemplateBackgrounds = JSON.parse(backgroundsKey);
     const imagesToLoad = [
-      { key: 'cover', src: DEFAULT_TEMPLATE_PATHS.coverImage },
-      { key: 'treatment', src: DEFAULT_TEMPLATE_PATHS.treatmentImage },
-      { key: 'continuation', src: DEFAULT_TEMPLATE_PATHS.continuationImage },
-      { key: 'team-essendon', src: DEFAULT_TEMPLATE_PATHS.teamImages.essendon },
-      { key: 'team-burwood', src: DEFAULT_TEMPLATE_PATHS.teamImages.burwood },
-      { key: 'team-mulgrave', src: DEFAULT_TEMPLATE_PATHS.teamImages.mulgrave },
+      { key: 'cover', src: live.cover, fallback: DEFAULT_TEMPLATE_PATHS.coverImage },
+      { key: 'treatment', src: live.treatment, fallback: DEFAULT_TEMPLATE_PATHS.treatmentImage },
+      { key: 'continuation', src: live.continuation, fallback: DEFAULT_TEMPLATE_PATHS.continuationImage },
+      { key: 'team-essendon', src: live.team?.essendon, fallback: DEFAULT_TEMPLATE_PATHS.teamImages.essendon },
+      { key: 'team-burwood', src: live.team?.burwood, fallback: DEFAULT_TEMPLATE_PATHS.teamImages.burwood },
+      { key: 'team-mulgrave', src: live.team?.mulgrave, fallback: DEFAULT_TEMPLATE_PATHS.teamImages.mulgrave },
     ];
 
+    let cancelled = false;
     let loadedCount = 0;
     const loadedImages: Record<string, HTMLImageElement> = {};
 
-    imagesToLoad.forEach(({ key, src }) => {
+    const settle = () => {
+      loadedCount++;
+      if (loadedCount === imagesToLoad.length && !cancelled) {
+        setImages(loadedImages);
+        setIsLoading(false);
+      }
+    };
+
+    imagesToLoad.forEach(({ key, src, fallback }) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         loadedImages[key] = img;
-        loadedCount++;
-        if (loadedCount === imagesToLoad.length) {
-          setImages(loadedImages);
-          setIsLoading(false);
-        }
+        settle();
       };
       img.onerror = () => {
-        console.error(`Failed to load image: ${src}`);
-        loadedCount++;
-        if (loadedCount === imagesToLoad.length) {
-          setImages(loadedImages);
-          setIsLoading(false);
+        if (src && img.src !== new URL(fallback, window.location.href).href) {
+          // The live artwork would not load; show the original instead.
+          img.src = fallback;
+          return;
         }
+        console.error(`Failed to load image: ${fallback}`);
+        settle();
       };
-      img.src = src;
+      img.src = src ?? fallback;
     });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backgroundsKey]);
 
   // Load doctor photo when it changes
   useEffect(() => {

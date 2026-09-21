@@ -194,6 +194,30 @@ export type Database = {
         }
         Relationships: []
       }
+      purge_run_log: {
+        Row: {
+          error: string | null
+          id: number
+          purged_activity: number
+          purged_plans: number
+          ran_at: string
+        }
+        Insert: {
+          error?: string | null
+          id?: never
+          purged_activity?: number
+          purged_plans?: number
+          ran_at?: string
+        }
+        Update: {
+          error?: string | null
+          id?: never
+          purged_activity?: number
+          purged_plans?: number
+          ran_at?: string
+        }
+        Relationships: []
+      }
       staff_member_clinics: {
         Row: {
           clinic_id: string
@@ -303,6 +327,8 @@ export type Database = {
           is_active: boolean
           kind: Database["public"]["Enums"]["template_kind"]
           page_count: number | null
+          preview_paths: string[]
+          published_at: string | null
           storage_path: string
           uploaded_by: string | null
         }
@@ -313,6 +339,8 @@ export type Database = {
           is_active?: boolean
           kind: Database["public"]["Enums"]["template_kind"]
           page_count?: number | null
+          preview_paths?: string[]
+          published_at?: string | null
           storage_path: string
           uploaded_by?: string | null
         }
@@ -323,6 +351,8 @@ export type Database = {
           is_active?: boolean
           kind?: Database["public"]["Enums"]["template_kind"]
           page_count?: number | null
+          preview_paths?: string[]
+          published_at?: string | null
           storage_path?: string
           uploaded_by?: string | null
         }
@@ -528,6 +558,7 @@ export type Database = {
           purged_plans: number
         }[]
       }
+      run_scheduled_purge: { Args: never; Returns: undefined }
       soft_delete_treatment_plan: {
         Args: { p_plan_id: string }
         Returns: undefined

@@ -7,7 +7,13 @@ config({ path: '.env.local', quiet: true });
 
 export default defineConfig({
   // Vite resolves the "@/*" tsconfig paths natively; no plugin needed.
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    // 'server-only' throws when imported outside an RSC build. Stubbing it lets
+    // tests exercise real server modules — the PDF renderer, the asset loader —
+    // instead of copies of them.
+    alias: { 'server-only': new URL('./tests/helpers/server-only-stub.ts', import.meta.url).pathname },
+  },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],

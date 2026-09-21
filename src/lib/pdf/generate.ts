@@ -4,7 +4,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import type { TreatmentPlanData, TemplateSettings, Team } from '@/types';
 import { LOCATION_TO_TEAM } from '@/types';
-import { loadFont, loadTemplatePdf, loadTeamPdf } from '@/lib/pdf/assets';
+import { loadFont, loadPlanTemplate, loadTeamTemplate } from '@/lib/pdf/assets';
 import {
   COVER_INTRO,
   FONT_SIZES,
@@ -52,6 +52,12 @@ const COLORS = {
 interface GeneratePdfOptions {
   data: TreatmentPlanData;
   settings: TemplateSettings;
+  /**
+   * Render against specific stored files instead of the live templates. This is
+   * how a DRAFT upload is checked: the admin sees a real plan on the new
+   * artwork before it is published, and nobody else's plans are affected.
+   */
+  templateOverrides?: { planPath?: string; teamPath?: string };
 }
 
 /** Money, as it appears on the plan: `$1,234.00`. */
@@ -74,6 +80,7 @@ function decodeDataUrl(source: string): Uint8Array {
 export async function generateTreatmentPlanPdf({
   data,
   settings,
+  templateOverrides,
 }: GeneratePdfOptions): Promise<Uint8Array> {
   // Create a new PDF document
   const pdfDoc = await PDFDocument.create();
@@ -99,28 +106,14 @@ export async function generateTreatmentPlanPdf({
     nunitoBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   }
 
-  // Load the blank plan template: cover, first treatment page, continuation.
-  let templatePdf;
-  try {
-    templatePdf = await PDFDocument.load(await loadTemplatePdf());
-  } catch (error) {
-    throw new Error(
-      `Failed to load the plan template: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
-  
-  // Get team based on location
+  // Templates. Each falls back to the bundled original if the uploaded one is
+  // missing, unreachable or will not open — a broken upload can make a plan
+  // look old-fashioned, but it can never stop one being produced.
   const team: Team = LOCATION_TO_TEAM[data.location];
-  
-  // Load the clinic's team page, appended after the treatment pages.
-  let teamPdf;
-  try {
-    teamPdf = await PDFDocument.load(await loadTeamPdf(team));
-  } catch (error) {
-    throw new Error(
-      `Failed to load the ${team} team page: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
+  const [{ doc: templatePdf }, { doc: teamPdf }] = await Promise.all([
+    loadPlanTemplate(templateOverrides?.planPath),
+    loadTeamTemplate(team, templateOverrides?.teamPath),
+  ]);
 
   // ============ PAGE 1: COVER PAGE ============
   // Copy cover page from template (page 0)

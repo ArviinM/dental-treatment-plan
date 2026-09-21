@@ -1,33 +1,9 @@
 import type { Location, TreatmentItem } from '@/types';
 import { getDentistByName } from '@/data/dentists';
+import { getPdfJs } from '@/lib/pdf/pdfjs-client';
 
-type PdfJs = typeof import('pdfjs-dist');
-
-let pdfJsPromise: Promise<PdfJs> | null = null;
-
-/**
- * Loads PDF.js on first use rather than at module scope.
- *
- * Importing it eagerly breaks the production build: this module is reachable
- * from a page Next prerenders, and PDF.js touches browser-only globals
- * (`DOMMatrix`) the moment it is evaluated. Deferring the import also keeps a
- * large dependency out of the initial bundle, since importing a plan is an
- * occasional action rather than something every visit needs.
- *
- * The worker is resolved relative to this module — Vite's `?url` import does
- * not exist under Next, but both Turbopack and webpack understand `new URL`.
- */
-async function getPdfJs(): Promise<PdfJs> {
-  pdfJsPromise ??= import('pdfjs-dist').then((lib) => {
-    lib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url
-    ).toString();
-    return lib;
-  });
-
-  return pdfJsPromise;
-}
+// PDF.js is loaded lazily and shared with template previews; see
+// lib/pdf/pdfjs-client.ts for why it cannot be imported at module scope.
 
 export interface ParsedTreatmentPlan {
   patientName: string;

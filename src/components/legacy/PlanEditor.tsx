@@ -28,6 +28,7 @@ import { parseTreatmentPlanPdf } from '@/services/pdfParser';
 import { useFeeCalculator } from '@/hooks/useFeeCalculator';
 import { saveTemplateSettings } from '@/app/(app)/admin/templates/actions';
 import type { Dentist } from '@/data/dentists';
+import type { TemplateBackgrounds } from '@/lib/data/reference';
 import type { TreatmentItem, Location, FeeItem, TemplateSettings, TreatmentPlanData } from '@/types';
 import { DEFAULT_TEMPLATE_SETTINGS, LOCATION_TO_TEAM } from '@/types';
 
@@ -44,6 +45,11 @@ type PlanEditorProps = {
    * plan, so persisting is admin-only. Staff can still adjust and preview.
    */
   canSaveSettings: boolean;
+  /**
+   * The live artwork. Data, not UI: the screen is frozen, but its preview must
+   * paint what the PDF will actually contain.
+   */
+  backgrounds?: TemplateBackgrounds;
 };
 
 export function PlanEditor({
@@ -51,6 +57,7 @@ export function PlanEditor({
   dentists,
   initialTemplateSettings,
   canSaveSettings,
+  backgrounds,
 }: PlanEditorProps) {
   // Patient Info State
   const [patientName, setPatientName] = useState('');
@@ -771,6 +778,7 @@ export function PlanEditor({
                   <CanvasPreview
                     data={treatmentPlanData}
                     settings={templateSettings}
+                    backgrounds={backgrounds}
                   />
                 </CardContent>
               </Card>

@@ -12,41 +12,67 @@ import { validateTemplatePdf } from '@/lib/pdf/validate-template';
  * Replacing the designed PDFs — the blank plan template, and the team page for
  * each clinic.
  *
- * THE FILE NEVER PASSES THROUGH THIS SERVER. It used to, and that broke in
- * production: server actions reject request bodies over 1 MB, and a fresh Canva
- * export of a team page is 2–5 MB. Raising the limit is not a fix either, because
- * Vercel caps function request bodies at 4.5 MB regardless.
+ * Two production incidents shaped this file.
  *
- * So an upload is three steps:
+ * FIRST: uploads failed outright. The PDF was sent through a server action,
+ * which rejects bodies over 1 MB, and a Canva export is 2-10 MB. So the file
+ * never passes through this server: the browser uploads straight to storage
+ * against a signed URL, and the server only authorises and records.
  *
- *   1. prepareTemplateUpload  — checks the caller is an admin, and issues a
- *                               signed URL for exactly one path
- *   2. the browser uploads    — straight to Supabase Storage, any size up to the
- *                               bucket's 25 MB limit
- *   3. finalizeTemplateUpload — opens the file, checks it is actually usable,
- *                               and only then makes it the active template
+ * SECOND: an upload went live that broke every plan. The Canva master had its
+ * own table and heading printed on it, so the app's were drawn on top of them.
+ * It was live for everyone the instant it landed, and the preview showed the
+ * old artwork so nothing looked wrong. So uploads now land as DRAFTS:
  *
- * Old rows are kept with is_active = false rather than overwritten, so a bad
- * upload is one click to undo.
+ *   prepare  -> the browser uploads the PDF and preview images
+ *   finalize -> the file is opened and checked, and stored as a draft
+ *   ...the admin looks at a real sample plan on it...
+ *   publish  -> only now does it affect anyone's plans
+ *
+ * And there is always a way back: publish keeps the previous version, restore
+ * puts it back, and "use the original design" drops back to the file that ships
+ * with the app — the one thing guaranteed to render.
  */
 
 export type UploadResult = { ok: boolean; error?: string };
 
+type SignedUpload = { path: string; token: string };
+
 export type PreparedUpload =
-  | { ok: true; path: string; token: string }
+  | { ok: true; pdf: SignedUpload; previews: SignedUpload[] }
   | { ok: false; error: string };
 
-type Kind = 'plan' | 'team';
+export type FinalizedUpload = { ok: true; draftId: string } | { ok: false; error: string };
 
-const BUCKET = 'plan-templates';
+type Kind = 'plan' | 'team';
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+const PDF_BUCKET = 'plan-templates';
+const PREVIEW_BUCKET = 'template-previews';
 const MAX_BYTES = 25 * 1024 * 1024;
+
+/** Cover, treatment, continuation for a plan; the one team page for a team. */
+const PREVIEW_COUNT: Record<Kind, number> = { plan: 3, team: 1 };
+
+function isKind(value: string): value is Kind {
+  return value === 'plan' || value === 'team';
+}
 
 function folderFor(kind: Kind, clinicSlug: string | null): string {
   return `${kind}/${clinicSlug ?? 'shared'}/`;
 }
 
+/** team/burwood/2026-...Z.pdf -> team/burwood/2026-...Z/ — where its previews live. */
+function previewFolderFor(pdfPath: string): string {
+  return `${pdfPath.replace(/\.pdf$/, '')}/`;
+}
+
+function isInside(path: string, folder: string): boolean {
+  return path.startsWith(folder) && !path.includes('..');
+}
+
 async function resolveClinic(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Supabase,
   kind: Kind,
   clinicSlug: string | null
 ): Promise<{ id: string | null; name: string } | { error: string }> {
@@ -62,7 +88,30 @@ async function resolveClinic(
   return clinic ? { id: clinic.id, name: clinic.name } : { error: 'We could not find that clinic.' };
 }
 
-/** Step 1. Nothing is uploaded yet — this only decides whether it may be. */
+function slotLabel(kind: Kind, clinicName: string): string {
+  return kind === 'team' ? `the ${clinicName} team page` : 'the plan template';
+}
+
+/** Removes a template's files from both buckets. Best effort: never throws. */
+async function removeFiles(supabase: Supabase, pdfPath: string, previewPaths: string[]) {
+  await supabase.storage.from(PDF_BUCKET).remove([pdfPath]);
+  if (previewPaths.length) await supabase.storage.from(PREVIEW_BUCKET).remove(previewPaths);
+}
+
+function afterChange() {
+  // The renderer memoises which template is current for a minute; without this
+  // a warm function would keep serving the version just replaced.
+  invalidateTemplateLookup();
+  revalidatePath('/admin/templates');
+  revalidatePath('/legacy');
+  revalidatePath('/plans', 'layout');
+}
+
+// -----------------------------------------------------------------------------
+// Upload: prepare, then finalize as a draft
+// -----------------------------------------------------------------------------
+
+/** Nothing is uploaded yet — this only decides whether it may be. */
 export async function prepareTemplateUpload(input: {
   kind: string;
   clinicSlug: string | null;
@@ -72,9 +121,7 @@ export async function prepareTemplateUpload(input: {
 }): Promise<PreparedUpload> {
   await requireAdmin();
 
-  if (input.kind !== 'plan' && input.kind !== 'team') {
-    return { ok: false, error: 'We did not recognise that template type.' };
-  }
+  if (!isKind(input.kind)) return { ok: false, error: 'We did not recognise that template type.' };
 
   // Checked here as well as in the browser: a client can lie about both.
   const looksLikePdf =
@@ -94,138 +141,252 @@ export async function prepareTemplateUpload(input: {
 
   // A fresh path every time, so nothing is ever served from a stale cache.
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const path = `${folderFor(input.kind, input.clinicSlug)}${stamp}.pdf`;
+  const pdfPath = `${folderFor(input.kind, input.clinicSlug)}${stamp}.pdf`;
+  const previewFolder = previewFolderFor(pdfPath);
 
-  // Issued with the ADMIN's own client, not the service role, so the bucket's
-  // upload policy is still what decides. The URL is good for this one path only.
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
+  // Issued with the ADMIN's own client, not the service role, so the buckets'
+  // upload policies still decide. Each URL is good for its one path only.
+  const [pdf, ...previews] = await Promise.all([
+    supabase.storage.from(PDF_BUCKET).createSignedUploadUrl(pdfPath),
+    ...Array.from({ length: PREVIEW_COUNT[input.kind] }, (_, i) =>
+      supabase.storage.from(PREVIEW_BUCKET).createSignedUploadUrl(`${previewFolder}${i}.png`)
+    ),
+  ]);
 
-  if (error || !data) {
+  if (pdf.error || !pdf.data || previews.some((p) => p.error || !p.data)) {
     return { ok: false, error: 'We could not start that upload. Please try again.' };
   }
 
-  return { ok: true, path: data.path, token: data.token };
+  return {
+    ok: true,
+    pdf: { path: pdf.data.path, token: pdf.data.token },
+    previews: previews.map((p) => ({ path: p.data!.path, token: p.data!.token })),
+  };
 }
 
-/** Step 3. The file is in storage; decide whether it becomes the live template. */
+/** The files are in storage. Check them, and keep them as a draft. */
 export async function finalizeTemplateUpload(input: {
   kind: string;
   clinicSlug: string | null;
   path: string;
-}): Promise<UploadResult> {
+  previewPaths: string[];
+}): Promise<FinalizedUpload> {
   const admin = await requireAdmin();
 
-  if (input.kind !== 'plan' && input.kind !== 'team') {
-    return { ok: false, error: 'We did not recognise that template type.' };
-  }
+  if (!isKind(input.kind)) return { ok: false, error: 'We did not recognise that template type.' };
+  const kind = input.kind;
 
-  // The path comes back from the browser, so it cannot be trusted to point
-  // where step 1 said it would. Without this, a caller could promote any object
-  // in the bucket to be the live template for a different clinic.
-  const folder = folderFor(input.kind, input.clinicSlug);
-  if (!input.path.startsWith(folder) || input.path.includes('..')) {
+  // Paths come back from the browser, so they cannot be trusted to point where
+  // prepare said they would. Without this a caller could promote any object in
+  // the bucket to be the live template for a different clinic.
+  const previewFolder = previewFolderFor(input.path);
+  const pathsOk =
+    isInside(input.path, folderFor(kind, input.clinicSlug)) &&
+    input.path.endsWith('.pdf') &&
+    input.previewPaths.length === PREVIEW_COUNT[kind] &&
+    input.previewPaths.every((p) => isInside(p, previewFolder));
+
+  if (!pathsOk) {
     return { ok: false, error: 'That upload did not match what was expected. Please try again.' };
   }
+
+  const supabase = await createClient();
+  const clinic = await resolveClinic(supabase, kind, input.clinicSlug);
+  if ('error' in clinic) return { ok: false, error: clinic.error };
+
+  const discard = async (error: string): Promise<FinalizedUpload> => {
+    await removeFiles(supabase, input.path, input.previewPaths);
+    return { ok: false, error };
+  };
+
+  const { data: blob, error: downloadError } = await supabase.storage
+    .from(PDF_BUCKET)
+    .download(input.path);
+
+  if (downloadError || !blob) return discard('The upload did not arrive. Please try again.');
+
+  // Open it for real. The checks live in lib/pdf/validate-template so they can
+  // be tested against real files.
+  const check = await validateTemplatePdf(new Uint8Array(await blob.arrayBuffer()), kind);
+  if (!check.ok) return discard(check.error);
+
+  // One pending draft per slot. Uploading again replaces the previous draft
+  // rather than stacking them up — a draft never went live, so it is not history.
+  const draftsQuery = supabase
+    .from('templates')
+    .select('id, storage_path, preview_paths')
+    .eq('kind', kind)
+    .is('published_at', null);
+  const { data: oldDrafts } = await (clinic.id
+    ? draftsQuery.eq('clinic_id', clinic.id)
+    : draftsQuery.is('clinic_id', null));
+
+  for (const draft of oldDrafts ?? []) {
+    await removeFiles(supabase, draft.storage_path, draft.preview_paths);
+    await supabase.from('templates').delete().eq('id', draft.id);
+  }
+
+  const { data: row, error } = await supabase
+    .from('templates')
+    .insert({
+      kind,
+      clinic_id: clinic.id,
+      storage_path: input.path,
+      preview_paths: input.previewPaths,
+      page_count: check.pageCount,
+      // A draft: NOT live, and not yet published.
+      is_active: false,
+      published_at: null,
+      uploaded_by: admin.id,
+    })
+    .select('id')
+    .single();
+
+  if (error || !row) return discard('The file uploaded but we could not save it. Please try again.');
+
+  await logActivity({
+    action: 'template.draft',
+    entityType: 'template',
+    entityId: row.id,
+    summary: `A new version of ${slotLabel(kind, clinic.name)} was uploaded and is waiting to be checked`,
+    metadata: { kind, clinicSlug: input.clinicSlug, pageCount: check.pageCount },
+  });
+
+  revalidatePath('/admin/templates');
+  return { ok: true, draftId: row.id };
+}
+
+// -----------------------------------------------------------------------------
+// Draft decisions
+// -----------------------------------------------------------------------------
+
+async function loadTemplate(supabase: Supabase, id: string) {
+  const { data } = await supabase
+    .from('templates')
+    .select('id, kind, clinic_id, storage_path, preview_paths, is_active, published_at, clinics(name)')
+    .eq('id', id)
+    .maybeSingle();
+  return data;
+}
+
+/** Stands down whatever is live in a slot. */
+async function deactivateSlot(supabase: Supabase, kind: Kind, clinicId: string | null) {
+  const query = supabase.from('templates').update({ is_active: false }).eq('kind', kind).eq('is_active', true);
+  await (clinicId ? query.eq('clinic_id', clinicId) : query.is('clinic_id', null));
+}
+
+/** Makes a checked draft the live template. The previous one is kept. */
+export async function publishTemplate(id: string): Promise<UploadResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const target = await loadTemplate(supabase, id);
+  if (!target) return { ok: false, error: 'That draft no longer exists.' };
+  if (target.published_at) return { ok: false, error: 'That version has already been published.' };
+
+  const kind = target.kind as Kind;
+
+  // Stand the old one down first: a partial unique index allows only one active
+  // template per slot, so activating before deactivating would be rejected.
+  await deactivateSlot(supabase, kind, target.clinic_id);
+
+  const { error } = await supabase
+    .from('templates')
+    .update({ is_active: true, published_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) return { ok: false, error: 'We could not publish that. Please try again.' };
+
+  await logActivity({
+    action: 'template.publish',
+    entityType: 'template',
+    entityId: id,
+    summary: `A new version of ${slotLabel(kind, target.clinics?.name ?? '')} was published`,
+  });
+
+  afterChange();
+  return { ok: true };
+}
+
+/** Throws a draft away. It never went live, so it leaves nothing behind. */
+export async function discardTemplateDraft(id: string): Promise<UploadResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const target = await loadTemplate(supabase, id);
+  if (!target) return { ok: true };
+  if (target.published_at) {
+    return { ok: false, error: 'That version has been published, so it cannot be discarded.' };
+  }
+
+  await removeFiles(supabase, target.storage_path, target.preview_paths);
+  const { error } = await supabase.from('templates').delete().eq('id', id);
+  if (error) return { ok: false, error: 'We could not discard that draft. Please try again.' };
+
+  await logActivity({
+    action: 'template.discard',
+    entityType: 'template',
+    summary: `A draft of ${slotLabel(target.kind as Kind, target.clinics?.name ?? '')} was discarded`,
+  });
+
+  revalidatePath('/admin/templates');
+  return { ok: true };
+}
+
+/**
+ * Goes back to the design that ships with the app.
+ *
+ * The uploaded versions are all kept — this only stops using them. It is the
+ * reliable way back from anything, because the bundled file is the one template
+ * guaranteed to render.
+ */
+export async function revertToOriginalTemplate(input: {
+  kind: string;
+  clinicSlug: string | null;
+}): Promise<UploadResult> {
+  await requireAdmin();
+  if (!isKind(input.kind)) return { ok: false, error: 'We did not recognise that template type.' };
 
   const supabase = await createClient();
   const clinic = await resolveClinic(supabase, input.kind, input.clinicSlug);
   if ('error' in clinic) return { ok: false, error: clinic.error };
 
-  // Throw away the uploaded object when it turns out to be unusable, so a
-  // rejected upload does not linger in the bucket.
-  const discard = async (error: string): Promise<UploadResult> => {
-    await supabase.storage.from(BUCKET).remove([input.path]);
-    return { ok: false, error };
-  };
-
-  const { data: blob, error: downloadError } = await supabase.storage
-    .from(BUCKET)
-    .download(input.path);
-
-  if (downloadError || !blob) {
-    return { ok: false, error: 'The upload did not arrive. Please try again.' };
-  }
-
-  // Open it for real, and refuse it if it is not usable. The checks live in
-  // lib/pdf/validate-template so they can be tested against real files.
-  const check = await validateTemplatePdf(
-    new Uint8Array(await blob.arrayBuffer()),
-    input.kind
-  );
-  if (!check.ok) return discard(check.error);
-  const pageCount = check.pageCount;
-
-  // Stand the old one down first: a partial unique index allows only one active
-  // template per slot, so inserting before deactivating would be rejected.
-  const deactivate = supabase.from('templates').update({ is_active: false }).eq('kind', input.kind);
-  await (clinic.id ? deactivate.eq('clinic_id', clinic.id) : deactivate.is('clinic_id', null));
-
-  const { error } = await supabase.from('templates').insert({
-    kind: input.kind,
-    clinic_id: clinic.id,
-    storage_path: input.path,
-    page_count: pageCount,
-    is_active: true,
-    uploaded_by: admin.id,
-  });
-
-  if (error) return discard('The file uploaded but we could not save it. Please try again.');
+  await deactivateSlot(supabase, input.kind, clinic.id);
 
   await logActivity({
-    action: 'template.upload',
+    action: 'template.use_original',
     entityType: 'template',
-    summary:
-      input.kind === 'team'
-        ? `The ${clinic.name} team page was replaced`
-        : 'The blank plan template was replaced',
-    metadata: { kind: input.kind, clinicSlug: input.clinicSlug, pageCount },
+    summary: `${slotLabel(input.kind, clinic.name).replace(/^the /, 'The ')} was switched back to the original design`,
   });
 
-  // The renderer memoises which template is current for a minute; without this
-  // a warm function would keep serving the version just replaced.
-  invalidateTemplateLookup();
-
-  revalidatePath('/admin/templates');
-  revalidatePath('/legacy');
-  revalidatePath('/plans', 'layout');
+  afterChange();
   return { ok: true };
 }
 
-/** Puts a previous version back. The current one is stood down in its place. */
+/** Puts a previously published version back. The current one is kept. */
 export async function restoreTemplate(id: string): Promise<UploadResult> {
   await requireAdmin();
-
   const supabase = await createClient();
-  const { data: target } = await supabase
-    .from('templates')
-    .select('id, kind, clinic_id, clinics(name)')
-    .eq('id', id)
-    .maybeSingle();
 
+  const target = await loadTemplate(supabase, id);
   if (!target) return { ok: false, error: 'That version no longer exists.' };
+  if (!target.published_at) {
+    return { ok: false, error: 'That is a draft — check it and publish it instead.' };
+  }
 
-  const deactivate = supabase.from('templates').update({ is_active: false }).eq('kind', target.kind);
-  await (target.clinic_id
-    ? deactivate.eq('clinic_id', target.clinic_id)
-    : deactivate.is('clinic_id', null));
+  const kind = target.kind as Kind;
+  await deactivateSlot(supabase, kind, target.clinic_id);
 
   const { error } = await supabase.from('templates').update({ is_active: true }).eq('id', id);
-  if (error) return { ok: false, error: 'We could not restore that version.' };
+  if (error) return { ok: false, error: 'We could not put that version back.' };
 
   await logActivity({
     action: 'template.restore',
     entityType: 'template',
     entityId: id,
-    summary:
-      target.kind === 'team'
-        ? `An earlier ${target.clinics?.name ?? ''} team page was restored`.replace('  ', ' ')
-        : 'An earlier blank plan template was restored',
+    summary: `An earlier version of ${slotLabel(kind, target.clinics?.name ?? '')} was put back`,
   });
 
-  invalidateTemplateLookup();
-
-  revalidatePath('/admin/templates');
-  revalidatePath('/legacy');
-  revalidatePath('/plans', 'layout');
+  afterChange();
   return { ok: true };
 }

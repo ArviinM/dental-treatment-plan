@@ -157,3 +157,62 @@ export async function getSetupCounts() {
     accounts: accounts.count ?? 0,
   };
 }
+
+// -----------------------------------------------------------------------------
+// Template artwork for the live preview
+// -----------------------------------------------------------------------------
+
+/**
+ * Preview images of whatever artwork is LIVE, for the canvas preview to paint.
+ *
+ * Every field is optional, and that is the fallback: anything missing means
+ * "use the bundled original". So a slot with no upload, an upload made before
+ * previews existed, or an image that fails to load all degrade to the original
+ * artwork rather than to a blank page.
+ */
+export type TemplateBackgrounds = {
+  cover?: string;
+  treatment?: string;
+  continuation?: string;
+  team: Partial<Record<Location, string>>;
+};
+
+export function templatePreviewUrl(path: string): string {
+  return `${env.supabaseUrl}/storage/v1/object/public/template-previews/${path}`;
+}
+
+/** Previews for one template row, laid out the way the canvas expects them. */
+export function backgroundsFromPreviews(
+  kind: 'plan' | 'team',
+  clinicSlug: Location | null,
+  previewPaths: string[]
+): TemplateBackgrounds {
+  const urls = previewPaths.map(templatePreviewUrl);
+
+  if (kind === 'team') {
+    return { team: clinicSlug && urls[0] ? { [clinicSlug]: urls[0] } : {} };
+  }
+
+  return { cover: urls[0], treatment: urls[1], continuation: urls[2], team: {} };
+}
+
+export async function getTemplateBackgrounds(): Promise<TemplateBackgrounds> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('templates')
+    .select('kind, preview_paths, clinics(slug)')
+    .eq('is_active', true);
+
+  const backgrounds: TemplateBackgrounds = { team: {} };
+
+  for (const row of data ?? []) {
+    const slice = backgroundsFromPreviews(
+      row.kind as 'plan' | 'team',
+      (row.clinics?.slug ?? null) as Location | null,
+      row.preview_paths
+    );
+    Object.assign(backgrounds, { ...slice, team: { ...backgrounds.team, ...slice.team } });
+  }
+
+  return backgrounds;
+}

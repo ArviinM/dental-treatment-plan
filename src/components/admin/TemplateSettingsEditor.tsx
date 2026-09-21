@@ -7,56 +7,12 @@ import { toast } from 'sonner';
 import { TemplateUploader } from '@/components/settings/TemplateUploader';
 import { CanvasPreview } from '@/components/preview/CanvasPreview';
 import { saveTemplateSettings } from '@/app/(app)/admin/templates/actions';
-import type { TemplateSettings, TreatmentPlanData } from '@/types';
+import type { TemplateSettings } from '@/types';
+import { samplePlan } from '@/lib/pdf/sample-plan';
+import type { TemplateBackgrounds } from '@/lib/data/reference';
 import { DEFAULT_TEMPLATE_SETTINGS } from '@/types';
 
-/**
- * A stand-in plan, so the preview has something to position.
- *
- * Deliberately awkward content rather than "John Smith": a long hyphenated name
- * with an apostrophe is what actually overflows the name box, and two visits
- * across two phases is what shows the subtotal rows. If it looks right here it
- * will look right in practice.
- */
-const SAMPLE_PLAN: TreatmentPlanData = {
-  patientName: 'Jonathan Santos-O’Brien',
-  doctorName: 'Dr Siv Lengsavath',
-  date: new Date().toISOString().split('T')[0],
-  location: 'burwood',
-  totalAmount: 559,
-  items: [
-    {
-      id: 's1',
-      phase: 1,
-      visitNo: 1,
-      itemCode: '011',
-      times: 1,
-      description: 'Comprehensive examination of your teeth, gums and mouth.',
-      tooth: '—',
-      fees: [{ id: 'f1', quantity: 1, unitFee: 84 }],
-    },
-    {
-      id: 's2',
-      phase: 1,
-      visitNo: 1,
-      itemCode: '114',
-      times: 1,
-      description: 'Removal of calculus, first visit.',
-      tooth: '—',
-      fees: [{ id: 'f2', quantity: 1, unitFee: 150 }],
-    },
-    {
-      id: 's3',
-      phase: 2,
-      visitNo: 1,
-      itemCode: '532',
-      times: 1,
-      description: 'Tooth-coloured restoration, three surfaces.',
-      tooth: '36',
-      fees: [{ id: 'f3', quantity: 1, unitFee: 325 }],
-    },
-  ],
-};
+const SAMPLE_PLAN = samplePlan();
 
 /**
  * Where text lands on the page.
@@ -70,7 +26,14 @@ const SAMPLE_PLAN: TreatmentPlanData = {
  * this is a per-person tweak that an admin happens to persist. Here it is
  * explicitly the shared setting for everyone.
  */
-export function TemplateSettingsEditor({ initial }: { initial: TemplateSettings }) {
+export function TemplateSettingsEditor({
+  initial,
+  backgrounds,
+}: {
+  initial: TemplateSettings;
+  /** The live artwork, so positions are nudged against what actually prints. */
+  backgrounds?: TemplateBackgrounds;
+}) {
   const [settings, setSettings] = useState<TemplateSettings>(initial);
   const [state, setState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -142,7 +105,7 @@ export function TemplateSettingsEditor({ initial }: { initial: TemplateSettings 
             A sample plan, so you can see where things land.
           </p>
           <div className="mx-auto max-w-xs lg:max-w-none">
-            <CanvasPreview data={SAMPLE_PLAN} settings={settings} />
+            <CanvasPreview data={SAMPLE_PLAN} settings={settings} backgrounds={backgrounds} />
           </div>
         </div>
       </aside>
